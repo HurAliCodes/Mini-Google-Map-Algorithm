@@ -1,0 +1,13 @@
+# Ignore build files
+build/
+*.o
+*.obj
+*.exe
+*.out
+
+# Ignore IDE/project files
+.vscode/
+*.vcxproj
+*.user
+*.sln
+*.DS_Store
