@@ -10,10 +10,16 @@ using namespace std;
 
 class Algorithms{
     public:
-        static void BFS(Graph &g, long long start);
-        static void DFS(Graph &g, long long start);
+        //Utility
+        static double heuristic(Graph & g , long long node1, long long node2);
+        static void printPath(unordered_map<long long, long long> &parent, long long start, long long end);
+ 
+        //Algorithms
+        static void Dijkstra(Graph & g , long long start, long long end);
+        static void Astar(Graph & g , long long start, long long end);
 
-        static void Dijkstra(Graph & g, long long start, long long destination);
+        //Efficiency
+        static void efficiency(Graph & g, long long start, long long end);
 };
 
 

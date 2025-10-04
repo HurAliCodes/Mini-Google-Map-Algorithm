@@ -10,9 +10,9 @@ class Graph{
         unordered_map<long long, Node> nodes;
         unordered_map<long long, vector<pair<long long, double>>> adjList;
     
-        double haversine(double lat1, double lat2, double lon1, double lon2);
     public:
-
+        
+        double haversine(double lat1, double lat2, double lon1, double lon2);
         void addNode(long long id, double lat, double lon);
         void adEdge(long long from, long long to, double distance);
         void adEdge(long long from, long long to);
