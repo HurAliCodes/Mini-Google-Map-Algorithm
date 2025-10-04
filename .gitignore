@@ -11,3 +11,6 @@ build/
 *.user
 *.sln
 *.DS_Store
+
+#Ignore karachi osm folder
+Karachi OSM/
