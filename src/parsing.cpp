@@ -45,22 +45,40 @@ void parseOSM(Graph &graph1, const string &filename)
             graph1.adEdge(noderefs[i], noderefs[i + 1]);
         }
     }
-    int count = 0;
-    for (auto &p : graph1.get_nodes())
-    {
-        cout << "Node " << p.first << " → (" << p.second.get_latitude() << ", " << p.second.get_longitude() << ")\n";
-        if (++count >= 10)
-            break;
-    }
+    // int count = 0;
+    // for (auto &p : graph1.get_nodes())
+    // {
+    //     cout << "Node " << p.first << " → (" << p.second.get_latitude() << ", " << p.second.get_longitude() << ")\n";
+    //     if (++count >= 10)
+    //         break;
+    // }
+    // for (auto &p : graph1.get_adjList())
+    // {
+    //     cout<<"Node: "<<p.first<<endl;
+    //     for(auto &s: p.second){
+    //         cout<<s.first<<" "<<s.second<<endl;
+    //     }
+    //     if (++count >= 10)
+    //         break;
+    // }
+    
 
 }
 
 void exporttocsv(Graph &graph1){
- ofstream file("nodes.csv");
- file<< " id, latitude, longitude\n";
- for(auto &p : graph1.get_nodes()){
-    file<<p.first<< ","<< p.second.get_latitude()<< ","<<p.second.get_longitude()<<"\n";
- }
+ ofstream file("nodes.txt");
+//  file<< " id, latitude, longitude\n";
+//  for(auto &p : graph1.get_nodes()){
+//     file<<p.first<< ","<< p.second.get_latitude()<< ","<<p.second.get_longitude()<<"\n";
+//  }
+ for (auto &p : graph1.get_adjList())
+    {
+        file<<"Node: "<<p.first<<endl;
+        for(auto &s: p.second){
+            file<<s.first<<" "<<s.second<<endl;
+        }
+    }
+
  file.close();
 
 

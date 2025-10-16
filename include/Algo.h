@@ -12,7 +12,7 @@ class Algorithms{
     public:
         //Utility
         static double heuristic(Graph & g , long long node1, long long node2);
-        static void printPath(unordered_map<long long, long long> &parent, long long start, long long end);
+        static void printPath(Graph& g,unordered_map<long long, long long> &parent, long long start, long long end);
  
         //Algorithms
         static void Dijkstra(Graph & g , long long start, long long end);

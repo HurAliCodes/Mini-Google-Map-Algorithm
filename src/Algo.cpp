@@ -1,6 +1,6 @@
 #include"Algo.h"
 #include<chrono>
-
+#include<fstream>
 
 //---------------Heuristic [for A Star]--------------------------------------------
 double Algorithms::heuristic(Graph & g, long long node1, long long node2){
@@ -13,7 +13,7 @@ double Algorithms::heuristic(Graph & g, long long node1, long long node2){
     return g.haversine(lat1, lat2, lon1, lon2);
 }
 
-void Algorithms::printPath(unordered_map<long long, long long> &parent, long long start, long long end){
+void Algorithms::printPath(Graph& g,unordered_map<long long, long long> &parent, long long start, long long end){
     vector<long long> path;
 
     for(long long at = end; at != -1; at = parent[at]){
@@ -22,6 +22,19 @@ void Algorithms::printPath(unordered_map<long long, long long> &parent, long lon
     }
 
     reverse(path.begin(), path.end());
+    ofstream ot("practice/path_cordinates.csv");
+    ot<< "lat,lon\n";
+
+     for (auto node : path) {
+        cout << node << " ";
+        auto n = g.get_nodes().at(node);
+        ot << n.get_latitude() << "," << n.get_longitude() << "\n";
+    }
+    cout << endl;
+
+    ot.close();
+    cout << "✅ Path coordinates saved to path_coords.csv\n";
+
     cout<<"Shortest path: ";
     for(auto node : path)
         cout<<node<<" ";
@@ -76,9 +89,12 @@ void Algorithms::Dijkstra(Graph & g, long long start, long long destination){
     chrono::duration<double, milli> duration = endTime - startTime;
 
     cout << "\n--- Dijkstra Algorithm ---\n";
-    printPath(parent, start, destination);
+    printPath(g,parent, start, destination);
     cout << "Total Distance: " << dist[destination] << " meters\n";
     cout << "Execution Time: " << duration.count() << " ms\n";
+
+
+
 }
 
 void Algorithms::efficiency(Graph & g, long long start, long long end){

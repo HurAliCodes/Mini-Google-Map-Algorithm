@@ -8,12 +8,15 @@
 #include"pugixml.hpp"
 #include"Graph.h"
 #include"parsing.h"
+#include"Algo.h"
 using namespace std;
 
 
 int main() {
+    Algorithms a;
     Graph g;
     parseOSM(g, "Karachi/Karachi.osm");
-    exporttocsv(g);
+    // exporttocsv(g);
+    a.Dijkstra(g,13167991882, 13167991885);
     return 0;
 }
