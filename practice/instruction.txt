@@ -1,0 +1,9 @@
+Start and head towards node 2297533049
+In 47 m, Turn Rightat node 2297533062
+In 413 m, Turn Rightat node 732019007
+In 67 m, Turn Leftat node 6426121908
+In 42 m, Turn Rightat node 6426121909
+In 49 m, Turn Leftat node 6426121912
+In 99 m, Turn Rightat node 2297537621
+In 352 m, Turn Leftat node 88408791
+In 550 m, you have arrived at destination (node: 1869080608)

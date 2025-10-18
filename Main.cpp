@@ -1,3 +1,4 @@
+#define _USE_MATH_DEFINES
 #include <iostream>
 #include <string>
 #include <unordered_map>
@@ -9,6 +10,7 @@
 #include"Graph.h"
 #include"parsing.h"
 #include"Algo.h"
+#include"Navigation.h"
 using namespace std;
 
 
@@ -17,6 +19,14 @@ int main() {
     Graph g;
     parseOSM(g, "Karachi/Karachi.osm");
     // exporttocsv(g);
-    a.Dijkstra(g,13167991882, 13167991885);
+    vector<long long> path= a.Dijkstra(g,2297533049, 1869080608);
+    
+    auto instructions=navigation::buildinstruction(g,path);
+    for (auto &ins: instructions)
+    {
+        /* code */
+        cout<< ins.text<<endl;
+    }
+    
     return 0;
 }
