@@ -1,13 +1,14 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { MapContainer, TileLayer, Marker, Polyline, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
-import axios from 'axios';
 import { fixDefaultIcon } from '../utils/leafletIconFix';
+import axios from 'axios';
+import SearchBar from './SearchBar';
+import Sidebar from './Sidebar';
+import RouteBox from './RouteBox';
 
-// apply icon fix
 fixDefaultIcon();
 
-// Helper component to capture clicks
 function ClickHandler({ onMapClick }) {
   useMapEvents({
     click(e) {
@@ -18,104 +19,223 @@ function ClickHandler({ onMapClick }) {
 }
 
 export default function MapView() {
-  // state
-  const [points, setPoints] = useState([]);           // clicked points (max 2)
-  const [path, setPath] = useState([]);               // array of {lat, lng} from backend
-  const [movingPos, setMovingPos] = useState(null);   // for animated marker
-  const animRef = useRef(null);
+  const [points, setPoints] = useState([]);              // [start, end]
+  const [destination, setDestination] = useState(null);  // end only
+  const [path, setPath] = useState([]);
+  const [savedPlaces, setSavedPlaces] = useState([]);
+  const [routeHistory, setRouteHistory] = useState([]);  // [{startName, startLat, startLng, endName, endLat, endLng, ts}]
+  const [awaitingStart, setAwaitingStart] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const mapRef = useRef(null);
 
-  // limit to 2 points
-  const handleMapClick = (latlng) => {
-    if (points.length >= 2) return; // ignore extra clicks
-    setPoints(prev => [...prev, latlng]);
+  // Load from localStorage
+  useEffect(() => {
+    try {
+      const s = JSON.parse(localStorage.getItem('savedPlaces') || '[]');
+      const rh = JSON.parse(localStorage.getItem('routeHistory') || '[]');
+      if (Array.isArray(s)) setSavedPlaces(s);
+      if (Array.isArray(rh)) setRouteHistory(rh);
+    } catch {}
+  }, []);
+
+  // Persist
+  useEffect(() => {
+    localStorage.setItem('savedPlaces', JSON.stringify(savedPlaces));
+  }, [savedPlaces]);
+  useEffect(() => {
+    localStorage.setItem('routeHistory', JSON.stringify(routeHistory));
+  }, [routeHistory]);
+
+  const centerMap = (place) => {
+    if (mapRef.current) {
+      mapRef.current.setView([place.lat, place.lng], Math.max(mapRef.current.getZoom(), 13));
+    }
   };
 
-  // Clear everything
+  const setStart = (place) => {
+    const start = { lat: place.lat, lng: place.lng, name: place.name };
+    setPoints(prev => [start, ...(destination ? [destination] : [])]);
+    centerMap(place);
+  };
+
+  const setEnd = (place) => {
+    const end = { lat: place.lat, lng: place.lng, name: place.name };
+    setDestination(end);
+    centerMap(place);
+  };
+
+  const savePlace = (place) => {
+    const key = `${place.lat.toFixed(5)},${place.lng.toFixed(5)}`;
+    setSavedPlaces(prev => {
+      const exists = prev.some(p => `${p.lat.toFixed(5)},${p.lng.toFixed(5)}` === key);
+      if (exists) return prev;
+      return [...prev, { name: place.name || 'Saved Place', lat: place.lat, lng: place.lng }];
+    });
+  };
+
+  const removeSaved = (place) => {
+    setSavedPlaces(prev => prev.filter(p => !(p.lat === place.lat && p.lng === place.lng)));
+  };
+
+  const clearSaved = () => setSavedPlaces([]);
+  const clearRouteHistory = () => setRouteHistory([]);
+
+  const handleMapClick = (latlng) => {
+    const place = { lat: latlng.lat, lng: latlng.lng, name: 'Dropped Pin' };
+    if (awaitingStart) {
+      setStart(place);
+      setAwaitingStart(false);
+      fetchPath();
+    } else {
+      setEnd(place);
+    }
+  };
+
   const clearAll = () => {
     setPoints([]);
+    setDestination(null);
     setPath([]);
-    setMovingPos(null);
-    if (animRef.current) {
-      clearInterval(animRef.current);
-      animRef.current = null;
-    }
+    setAwaitingStart(false);
   };
 
-  // Request shortest path from backend
-  const fetchPath = async () => {
-    if (points.length < 2) {
-      alert('Click two points: start and end.');
+  const beginRoutePlanning = () => {
+    if (!destination) {
+      alert('Select destination (end) first.');
       return;
     }
-
-    const payload = { start: points[0], end: points[1] };
-    try {
-      // Replace URL with your backend endpoint
-      const res = await axios.post('http://localhost:5000/shortest-path', payload, { timeout: 10000 });
-      // Expect backend: { path: [ {lat:.., lng:..}, ... ] }
-      if (!res.data || !Array.isArray(res.data.path)) throw new Error('Invalid response format');
-      setPath(res.data.path);
-    } catch (err) {
-      // If backend not ready, fallback to a mock path (for frontend dev)
-      console.warn('Backend request failed — using mock path. Error:', err.message);
-      const mockPath = generateMockPath(points[0], points[1]);
-      setPath(mockPath);
+    if (!points[0]) {
+      setAwaitingStart(true);
+    } else {
+      fetchPath();
     }
   };
 
-  // Simple mock path generator (straight interpolation of a few points)
+  const useCurrentLocation = () => {
+    if (!navigator.geolocation) {
+      alert('Geolocation not supported');
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      pos => {
+        const place = { lat: pos.coords.latitude, lng: pos.coords.longitude, name: 'My Location' };
+        setStart(place);
+        if (awaitingStart) {
+          setAwaitingStart(false);
+        }
+        fetchPath();
+      },
+      err => alert('Unable to get current location: ' + err.message),
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
+  };
+
+  const addRouteToHistory = (start, end) => {
+    setRouteHistory(prev => [
+      { startName: start.name || 'Start', startLat: start.lat, startLng: start.lng, endName: end.name || 'Destination', endLat: end.lat, endLng: end.lng, ts: Date.now() },
+      ...prev
+    ].slice(0, 100));
+  };
+
+  const fetchPath = async () => {
+    const start = points[0];
+    const end = destination || points[1];
+    if (!start || !end) {
+      alert('Select destination, then pick a start to plan route.');
+      return;
+    }
+    // keep points aligned
+    setPoints([start, end]);
+
+    try {
+      const res = await axios.post('http://127.0.0.1:5000/shortest-path', {
+        start: { lat: start.lat, lng: start.lng },
+        end: { lat: end.lat, lng: end.lng }
+      });
+      if (!res.data || !Array.isArray(res.data.path)) throw new Error('Invalid response format');
+      setPath(res.data.path);
+      addRouteToHistory(start, end);
+    } catch (err) {
+      console.warn('Backend request failed. Using fallback mock path.', err.message);
+      const mockPath = generateMockPath(start, end);
+      setPath(mockPath);
+      addRouteToHistory(start, end);
+    }
+  };
+
   const generateMockPath = (start, end) => {
     const steps = 12;
-    const latDiff = (end.lat - start.lat) / steps;
-    const lngDiff = (end.lng - start.lng) / steps;
     const arr = [];
     for (let i = 0; i <= steps; i++) {
-      arr.push({ lat: start.lat + latDiff * i, lng: start.lng + lngDiff * i });
+      const t = i / steps;
+      arr.push({
+        lat: start.lat + t * (end.lat - start.lat),
+        lng: start.lng + t * (end.lng - start.lng)
+      });
     }
     return arr;
   };
 
-  // Auto-fit map to path bounds when path changes
-  useEffect(() => {
-    if (!path || path.length === 0) return;
-    // Use Leaflet to fit bounds
-    const group = new L.featureGroup(path.map(p => L.marker([p.lat, p.lng])));
-    try {
-      const map = group.getLayers()[0]._map; // not reliable here
-      // We cannot get map instance easily here; fitBounds can be done via map ref if required.
-      // For now, user can zoom manually. If you want auto-fit, we can add a mapRef and call fitBounds.
-    } catch (e) {
-      // ignore
-    }
-  }, [path]);
+  const loadRouteFromHistory = (r) => {
+    const s = { lat: r.startLat, lng: r.startLng, name: r.startName };
+    const e = { lat: r.endLat, lng: r.endLng, name: r.endName };
+    setPoints([s, e]);
+    setDestination(e);
+    centerMap(e);
+    setPath([]);
+  };
 
   return (
-    <div style={{ height: '100vh', width: '100vw', display: 'flex', flexDirection: 'column' }}>
-      <div style={{ padding: 8, display: 'flex', gap: 8 }}>
-        <button onClick={fetchPath}>Find Shortest Path</button>
-        <button onClick={clearAll}>Clear</button>
-        <div style={{ marginLeft: 16 }}>
-          {points[0] && <span>Start: {points[0].lat.toFixed(5)}, {points[0].lng.toFixed(5)}</span>}
-          {points[1] && <span style={{ marginLeft: 12 }}>End: {points[1].lat.toFixed(5)}, {points[1].lng.toFixed(5)}</span>}
-        </div>
+    <div style={{ height: '100vh', width: '100vw', position: 'relative' }}>
+      {/* Sidebar */}
+      <Sidebar
+        savedPlaces={savedPlaces}
+        routeHistory={routeHistory}
+        onSetStart={setStart}
+        onSetEnd={setEnd}
+        onCenter={(p) => centerMap(p)}
+        onClearSaved={clearSaved}
+        onClearRouteHistory={clearRouteHistory}
+        onRemoveSaved={removeSaved}
+        onLoadRoute={loadRouteFromHistory}
+        collapsed={sidebarCollapsed}
+        onToggleCollapse={() => setSidebarCollapsed(c => !c)}
+      />
+
+      {/* Search Bar */}
+      <SearchBar
+        onSetStart={setStart}
+        onSetEnd={setEnd}       // sets destination
+        onSavePlace={savePlace}
+      />
+
+      {/* Route Box */}
+      <RouteBox
+        destination={destination}
+        awaitingStart={awaitingStart}
+        onFindRoute={beginRoutePlanning}
+        onUseCurrentLocation={useCurrentLocation}
+        onClear={clearAll}
+      />
+
+      {/* Map */}
+      <div style={{ position: 'absolute', inset: 0 }}>
+        <MapContainer
+          center={[24.8607, 67.0011]}
+          zoom={13}
+          style={{ height: '100%', width: '100%' }}
+          whenCreated={(map) => { mapRef.current = map; }}
+        >
+          <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+          <ClickHandler onMapClick={handleMapClick} />
+
+          {points[0] && <Marker position={[points[0].lat, points[0].lng]} />}
+          {destination && <Marker position={[destination.lat, destination.lng]} />}
+
+          {path.length > 0 && (
+            <Polyline positions={path.map(p => [p.lat, p.lng])} />
+          )}
+        </MapContainer>
       </div>
-
-      <MapContainer center={[24.8607, 67.0011]} zoom={13} style={{ flex: 1 }}>
-        <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-        <ClickHandler onMapClick={handleMapClick} />
-        {/* Markers for points */}
-        {points.map((p, idx) => <Marker key={`pt-${idx}`} position={[p.lat, p.lng]} />)}
-
-        {/* Path as polyline */}
-        {path.length > 0 && (
-          <Polyline positions={path.map(p => [p.lat, p.lng])} />
-        )}
-
-        {/* Animated moving marker */}
-        {movingPos && (
-          <Marker position={[movingPos.lat, movingPos.lng]} />
-        )}
-      </MapContainer>
     </div>
   );
 }
