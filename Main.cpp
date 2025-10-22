@@ -1,3 +1,4 @@
+#define _USE_MATH_DEFINES
 #include <iostream>
 #include <string>
 #include <unordered_map>
@@ -11,6 +12,7 @@
 #include"Graph.h"
 #include"parsing.h"
 #include"Algo.h"
+#include"Navigation.h"
 using namespace std;
 
 
@@ -28,10 +30,11 @@ int main() {
         //     a.Astar(g,732019159, 2297529385, found);
         // });
         
-            a.Astar(g,732019159, 2297529385);
-            a.Dijkstra(g,732019159, 2297529385);
+    a.Astar(g,732019159, 2297529385);
+    a.Dijkstra(g,732019159, 2297529385);
 
     // exporttocsv(g);
+// <<<<<<< HEAD
     // a.Dijkstra(g,13167991882, 13167991885);
     // a.Astar(g, 13167991882, 13167991885);
 
@@ -45,5 +48,16 @@ int main() {
     //     cout<<"\nNo path found by either algorithm"<<endl;
     // }
 
+// =======
+//     vector<long long> path= a.Dijkstra(g,2297533049, 1869080608);
+    
+//     auto instructions=navigation::buildinstruction(g,path);
+//     for (auto &ins: instructions)
+//     {
+//         /* code */
+//         cout<< ins.text<<endl;
+//     }
+    
+// >>>>>>> 8b17178c8ac36fb02c96566d96e7d5736fa9fb69
     return 0;
 }

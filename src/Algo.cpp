@@ -117,7 +117,7 @@ void Algorithms::Astar(Graph & g , long long start, long long end){
 }
 
 //---------------Dijkstra---------------------------------------------
-void Algorithms::Dijkstra(Graph & g, long long start, long long destination){
+vector<long long> Algorithms::Dijkstra(Graph & g, long long start, long long destination){
     auto &adj = g.get_adjList();
 
     unordered_map<long long, double> dist;
@@ -168,6 +168,16 @@ void Algorithms::Dijkstra(Graph & g, long long start, long long destination){
         }
     }
 
+    vector<long long> path;
+    for (long long at = destination; at != -1; at= parent[at])
+    {
+        /* code */
+        path.push_back(at);
+        if(at== start) break;
+    }
+    
+    reverse(path.begin(), path.end());
+
     auto endTime = chrono::high_resolution_clock::now();
     chrono::duration<double, milli> duration = endTime - startTime;
 
@@ -176,7 +186,7 @@ void Algorithms::Dijkstra(Graph & g, long long start, long long destination){
     cout << "Total Distance: " << dist[destination] << " meters\n";
     cout << "Execution Time: " << duration.count() << " ms\n";
 
-
+    return path;
 
 }
 
