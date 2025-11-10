@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import axios from 'axios';
 
-export default function SearchBar({ onSetStart, onSetEnd, onSavePlace }) {
+export default function SearchBar({ onSetStart, onSetEnd }) {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -22,9 +22,7 @@ export default function SearchBar({ onSetStart, onSetEnd, onSavePlace }) {
         const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&addressdetails=1&limit=5`;
         const res = await axios.get(url, {
           signal: controller.signal,
-          headers: {
-            'Accept-Language': 'en',
-          }
+          headers: { 'Accept-Language': 'en' }
         });
         setResults(res.data || []);
       } catch (e) {
@@ -78,7 +76,6 @@ export default function SearchBar({ onSetStart, onSetEnd, onSavePlace }) {
               </div>
               <button className="button" onClick={() => onSetStart && onSetStart(place)}>Start</button>
               <button className="button" onClick={() => onSetEnd && onSetEnd(place)}>End</button>
-              <button className="button" onClick={() => onSavePlace && onSavePlace(place)}>Save</button>
             </div>
           ))}
         </div>
