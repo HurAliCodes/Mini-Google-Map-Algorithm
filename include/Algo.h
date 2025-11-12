@@ -3,6 +3,7 @@
 
 #include"Graph.h"
 #include<stack>
+#include<atomic>
 #include<limits>
 #include<functional>
 
