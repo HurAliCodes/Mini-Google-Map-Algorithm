@@ -22,7 +22,7 @@ void Algorithms::printPath(Graph& g,unordered_map<long long, long long> &parent,
     }
 
     reverse(path.begin(), path.end());
-    ofstream ot("practice/path_cordinates.csv");
+    ofstream ot("path_cordinates.csv");
     ot<< "lat,lon\n";
 
      for (auto node : path) {

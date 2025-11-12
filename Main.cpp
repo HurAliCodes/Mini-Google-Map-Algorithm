@@ -32,18 +32,93 @@ struct CORS {
 };
 
 //---------------------- Load Graph from nodes.txt ----------------------
-Graph loadGraph(const std::string& filename) {
+// Graph loadGraph(const std::string& filename) {
+//     Graph g;
+//     std::ifstream in(filename);
+//     if (!in.is_open()) {
+//         std::cerr << "❌ Failed to open " << filename << std::endl;
+//         return g;
+//     }
+
+//     std::string line;
+//     long long currentNode = -1;
+//     double lat, lon;
+
+//     while (std::getline(in, line)) {
+//         if (line.empty()) continue;
+//         std::stringstream ss(line);
+//         std::string token;
+//         ss >> token;
+
+//         if (token == "Node:") {
+//             ss >> currentNode >> lat >> lon;
+//             g.addNode(currentNode, lat, lon);  // ✅ add with real coordinates
+//         } else {
+//             long long neighbor = std::stoll(token);
+//             double weight;
+//             ss >> weight;
+
+//             // ✅ Only add edge if neighbor already exists
+//             if (g.get_nodes().find(currentNode) != g.get_nodes().end() &&
+//                 g.get_nodes().find(neighbor) != g.get_nodes().end()) {
+//                 g.adEdge(currentNode, neighbor, weight);
+//             } else {
+//                 // Optionally store temporarily if you prefer to link later
+//                 g.adEdge(currentNode, neighbor, weight);
+//             }
+//         }
+//     }
+
+//     std::cout << "✅ Graph loaded from " << filename << std::endl;
+//     return g;
+// }
+
+Graph loadGraph(const std::string& nodesCSV, const std::string& edgesTXT) {
     Graph g;
-    std::ifstream in(filename);
-    if (!in.is_open()) {
-        std::cerr << "❌ Failed to open " << filename << std::endl;
+
+    // ---------------- Load all nodes from nodes.csv ----------------
+    std::ifstream csv(nodesCSV);
+    if (!csv.is_open()) {
+        std::cerr << "❌ Failed to open " << nodesCSV << std::endl;
         return g;
     }
 
     std::string line;
-    long long currentNode = -1;
+    std::getline(csv, line); // skip header
 
-    while (std::getline(in, line)) {
+    while (std::getline(csv, line)) {
+        if (line.empty()) continue;
+
+        std::stringstream ss(line);
+        std::string idStr, latStr, lonStr;
+
+        std::getline(ss, idStr, ',');
+        std::getline(ss, latStr, ',');
+        std::getline(ss, lonStr, ',');
+
+        if (idStr.empty() || latStr.empty() || lonStr.empty()) continue;
+
+        long long id = std::stoll(idStr);
+        double lat = std::stod(latStr);
+        double lon = std::stod(lonStr);
+
+        g.addNode(id, lat, lon);
+    }
+    csv.close();
+    std::cout << "✅ Loaded " << g.get_nodes().size() << " nodes from " << nodesCSV << std::endl;
+
+
+    // ---------------- Load edges from nodes.txt ----------------
+    std::ifstream txt(edgesTXT);
+    if (!txt.is_open()) {
+        std::cerr << "⚠️  Warning: Failed to open " << edgesTXT << " (no edges loaded)\n";
+        return g;
+    }
+
+    long long currentNode = -1;
+    int edgeCount = 0;
+
+    while (std::getline(txt, line)) {
         if (line.empty()) continue;
         std::stringstream ss(line);
         std::string token;
@@ -51,23 +126,29 @@ Graph loadGraph(const std::string& filename) {
 
         if (token == "Node:") {
             ss >> currentNode;
-            g.addNode(currentNode, 0.0, 0.0); // Lat/Lon placeholder
         } else {
             long long neighbor = std::stoll(token);
             double weight;
             ss >> weight;
 
-            if (g.get_nodes().find(neighbor) == g.get_nodes().end()) {
-                g.addNode(neighbor, 0.0, 0.0);
+            // ✅ Add edge only if both nodes exist
+            if (g.get_nodes().find(currentNode) != g.get_nodes().end() &&
+                g.get_nodes().find(neighbor) != g.get_nodes().end()) {
+                g.adEdge(currentNode, neighbor, weight);
+                edgeCount++;
+            } else {
+                std::cerr << "⚠️  Skipped edge (" << currentNode << " → " << neighbor 
+                          << ") because one of the nodes was missing.\n";
             }
-
-            g.adEdge(currentNode, neighbor, weight);
         }
     }
 
-    std::cout << "✅ Graph loaded from " << filename << std::endl;
+    txt.close();
+    std::cout << "✅ Loaded " << edgeCount << " edges from " << edgesTXT << std::endl;
+
     return g;
 }
+
 
 //---------------------- Find nearest node by lat/lng ----------------------
 long long findNearestNode(Graph& g, double lat, double lng) {
@@ -86,7 +167,9 @@ long long findNearestNode(Graph& g, double lat, double lng) {
 int main() {
     crow::App<CORS> app;
 
-    Graph g = loadGraph("nodes.txt");
+    // Graph g = loadGraph("nodes.txt");
+    Graph g = loadGraph("nodes.csv", "nodes.txt");
+
     Algorithms algo;
 
     // Health check
@@ -112,6 +195,9 @@ int main() {
 
             long long startNode = findNearestNode(g, startLat, startLng);
             long long endNode   = findNearestNode(g, endLat, endLng);
+
+            cout<<"Start Node: "<<startNode;
+            cout<<"End Node: "<<endNode;
 
             if (startNode == -1 || endNode == -1) {
                 return crow::response(500, "Failed to find nearest nodes");

@@ -59,6 +59,7 @@ export default function MapView() {
     const start = { lat: place.lat, lng: place.lng, name: place.name };
     setPoints(prev => [start, ...(destination ? [destination] : [])]);
     centerMap(place);
+
   };
 
   const setEnd = (place) => {
@@ -119,7 +120,8 @@ export default function MapView() {
       alert('Select destination, then pick a start to plan route.');
       return;
     }
-
+    console.log(start)
+    console.log(end)
     try {
       const res = await axios.post('http://127.0.0.1:5000/shortest-path', {
         start: { lat: start.lat, lng: start.lng },
