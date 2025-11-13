@@ -22,7 +22,7 @@ void Algorithms::printPath(Graph& g,unordered_map<long long, long long> &parent,
     }
 
     reverse(path.begin(), path.end());
-    ofstream ot("practice/path_cordinates.csv");
+    ofstream ot("path_cordinates.csv");
     ot<< "lat,lon\n";
 
      for (auto node : path) {
@@ -47,37 +47,33 @@ void Algorithms::Astar(Graph & g , long long start, long long end){
 }
 
 //---------------Dijkstra---------------------------------------------
-void Algorithms::Dijkstra(Graph & g, long long start, long long destination){
+double Algorithms::Dijkstra(Graph & g, long long start, long long destination) {
     auto &adj = g.get_adjList();
-
     unordered_map<long long, double> dist;
     unordered_map<long long, long long> parent;
 
-    //Setting distances to infinity
-    for(auto &p : adj){
+    for (auto &p : adj) {
         dist[p.first] = numeric_limits<double>::infinity();
         parent[p.first] = -1;
     }
 
-    //Current Node distance to 0
     dist[start] = 0;
-
     priority_queue<pair<double, long long>, vector<pair<double, long long>>, greater<pair<double, long long>>> pq;
     pq.push({0, start});
 
     auto startTime = chrono::high_resolution_clock::now();
 
-    while(!pq.empty()){
+    while (!pq.empty()) {
         auto [currentDist, node] = pq.top();
         pq.pop();
 
-        if(node == destination) break;
+        if (node == destination) break;
 
-        for(auto &neighbour : adj[node]){
+        for (auto &neighbour : adj[node]) {
             long long next = neighbour.first;
             double weight = neighbour.second;
 
-            if(currentDist + weight < dist[next]){
+            if (currentDist + weight < dist[next]) {
                 dist[next] = currentDist + weight;
                 parent[next] = node;
                 pq.push({dist[next], next});
@@ -89,13 +85,14 @@ void Algorithms::Dijkstra(Graph & g, long long start, long long destination){
     chrono::duration<double, milli> duration = endTime - startTime;
 
     cout << "\n--- Dijkstra Algorithm ---\n";
-    printPath(g,parent, start, destination);
+    printPath(g, parent, start, destination);
     cout << "Total Distance: " << dist[destination] << " meters\n";
     cout << "Execution Time: " << duration.count() << " ms\n";
 
-
-
+    // ✅ Return total distance
+    return dist[destination];
 }
+
 
 void Algorithms::efficiency(Graph & g, long long start, long long end){
     Dijkstra(g, start, end);
