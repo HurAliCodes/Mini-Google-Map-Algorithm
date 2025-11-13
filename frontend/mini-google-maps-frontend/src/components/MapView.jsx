@@ -147,7 +147,7 @@ export default function MapView() {
     setPoints([start, end]);
 
     try {
-      const res = await axios.post('http://127.0.0.1:5000/shortest-path', {
+      const res = await axios.post('http://127.0.0.1:18080/shortest-path', {
         start: { lat: start.lat, lng: start.lng },
         end: { lat: end.lat, lng: end.lng }
       });
