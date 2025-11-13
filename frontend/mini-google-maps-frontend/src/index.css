@@ -338,7 +338,7 @@ button{
 .map-floating{
   position:absolute;
   right:18px;
-  bottom:18px;
+  top:18px;
   display:flex;
   flex-direction:column;
   gap:10px;
@@ -471,7 +471,7 @@ button{
   .brand .title{display:none}
   .searchbar{width:calc(100% - 120px)}
   .map-top-left{left:12px;top:110px}
-  .routebox{min-width:88vw;bottom:10px}
+  .routebox{min-width:88vw;bottom:10px} 
 }
 
 @media (max-width:600px){

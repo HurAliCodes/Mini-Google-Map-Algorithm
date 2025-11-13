@@ -1,5 +1,11 @@
 import React from 'react';
 
+function formatDistance(meters) {
+  if (!meters || meters <= 0) return '--';
+  if (meters >= 1000) return `${(meters / 1000).toFixed(1)} km`;
+  return `${Math.round(meters)} m`;
+}
+
 export default function RouteBox({
   destination,
   awaitingStart,
@@ -7,11 +13,58 @@ export default function RouteBox({
   onUseCurrentLocation,
   onClear,
   onSaveRoute,
-  routeFound
+  routeFound,
+  distanceMeters,
+  estimates,
+  onFitRoute,
+  pathPointsCount
 }) {
   return (
     <div className="routebox" role="region" aria-live="polite">
-      {destination ? (
+      {routeFound ? (
+        <>
+          <div className="meta">Route summary</div>
+
+          {/* Prominent distance like Google Maps */}
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12}}>
+            <div>
+              <div style={{fontSize:20,fontWeight:800,color:'var(--text)'}}>
+                {formatDistance(distanceMeters)}
+              </div>
+              <div style={{fontSize:13,color:'var(--muted)'}}>{pathPointsCount} points · {destination ? (destination.name || '') : ''}</div>
+            </div>
+
+            <div style={{display:'flex',gap:8}}>
+              <button className="button" onClick={onFitRoute} title="Fit route on map">Center route</button>
+              <button className="button" onClick={onSaveRoute} title="Save route">Save</button>
+            </div>
+          </div>
+
+          <div style={{display:'flex',gap:12,flexWrap:'wrap',marginBottom:8}}>
+            <div style={{minWidth:140}}>
+              <div style={{fontSize:12,color:'var(--muted)'}}>Driving</div>
+              <div style={{fontWeight:700}}>{estimates?.driving || '--'}</div>
+            </div>
+
+            <div style={{minWidth:140}}>
+              <div style={{fontSize:12,color:'var(--muted)'}}>Walking</div>
+              <div style={{fontWeight:700}}>{estimates?.walking || '--'}</div>
+            </div>
+
+            <div style={{minWidth:120}}>
+              <div style={{fontSize:12,color:'var(--muted)'}}>Steps</div>
+              <div style={{fontWeight:700}}>{pathPointsCount}</div>
+            </div>
+          </div>
+
+          <div style={{display:'flex',justifyContent:'flex-end',gap:8,flexWrap:'wrap'}}>
+           
+            <div style={{display:'flex',gap:8}}>
+              <button className="button" onClick={onClear}>Clear</button>
+            </div>
+          </div>
+        </>
+      ) : destination ? (
         <>
           <div className="meta">Destination</div>
           <div style={{fontWeight:700,color:'var(--text)',marginBottom:6}}>
@@ -25,7 +78,6 @@ export default function RouteBox({
             <div style={{display:'flex',gap:8}}>
               <button className="button" onClick={onFindRoute}>Find Route</button>
               <button className="button" onClick={onClear}>Clear</button>
-              {routeFound && <button className="button" onClick={onSaveRoute}>Save Route</button>}
             </div>
 
             {awaitingStart ? (

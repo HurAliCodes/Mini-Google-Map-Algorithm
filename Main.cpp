@@ -31,72 +31,22 @@ struct CORS {
     }
 };
 
-//---------------------- Load Graph from nodes.txt ----------------------
-// Graph loadGraph(const std::string& filename) {
-//     Graph g;
-//     std::ifstream in(filename);
-//     if (!in.is_open()) {
-//         std::cerr << "❌ Failed to open " << filename << std::endl;
-//         return g;
-//     }
-
-//     std::string line;
-//     long long currentNode = -1;
-//     double lat, lon;
-
-//     while (std::getline(in, line)) {
-//         if (line.empty()) continue;
-//         std::stringstream ss(line);
-//         std::string token;
-//         ss >> token;
-
-//         if (token == "Node:") {
-//             ss >> currentNode >> lat >> lon;
-//             g.addNode(currentNode, lat, lon);  // ✅ add with real coordinates
-//         } else {
-//             long long neighbor = std::stoll(token);
-//             double weight;
-//             ss >> weight;
-
-//             // ✅ Only add edge if neighbor already exists
-//             if (g.get_nodes().find(currentNode) != g.get_nodes().end() &&
-//                 g.get_nodes().find(neighbor) != g.get_nodes().end()) {
-//                 g.adEdge(currentNode, neighbor, weight);
-//             } else {
-//                 // Optionally store temporarily if you prefer to link later
-//                 g.adEdge(currentNode, neighbor, weight);
-//             }
-//         }
-//     }
-
-//     std::cout << "✅ Graph loaded from " << filename << std::endl;
-//     return g;
-// }
-
-Graph loadGraph(const std::string& nodesCSV, const std::string& edgesTXT) {
-    Graph g;
-
-    // ---------------- Load all nodes from nodes.csv ----------------
-    std::ifstream csv(nodesCSV);
-    if (!csv.is_open()) {
-        std::cerr << "❌ Failed to open " << nodesCSV << std::endl;
-        return g;
+void loadNodeCoordinates(Graph& g, const std::string& filename) {
+    std::ifstream in(filename);
+    if (!in.is_open()) {
+        std::cerr << "❌ Failed to open " << filename << std::endl;
+        return;
     }
 
     std::string line;
-    std::getline(csv, line); // skip header
+    std::getline(in, line); // skip header
 
-    while (std::getline(csv, line)) {
-        if (line.empty()) continue;
-
+    while (std::getline(in, line)) {
         std::stringstream ss(line);
         std::string idStr, latStr, lonStr;
-
-        std::getline(ss, idStr, ',');
-        std::getline(ss, latStr, ',');
-        std::getline(ss, lonStr, ',');
-
-        if (idStr.empty() || latStr.empty() || lonStr.empty()) continue;
+        if (!std::getline(ss, idStr, ',')) continue;
+        if (!std::getline(ss, latStr, ',')) continue;
+        if (!std::getline(ss, lonStr, ',')) continue;
 
         long long id = std::stoll(idStr);
         double lat = std::stod(latStr);
@@ -104,21 +54,23 @@ Graph loadGraph(const std::string& nodesCSV, const std::string& edgesTXT) {
 
         g.addNode(id, lat, lon);
     }
-    csv.close();
-    std::cout << "✅ Loaded " << g.get_nodes().size() << " nodes from " << nodesCSV << std::endl;
 
+    std::cout << "✅ Node coordinates loaded from " << filename << std::endl;
+}
 
-    // ---------------- Load edges from nodes.txt ----------------
-    std::ifstream txt(edgesTXT);
-    if (!txt.is_open()) {
-        std::cerr << "⚠️  Warning: Failed to open " << edgesTXT << " (no edges loaded)\n";
+//---------------------- Load Graph from nodes.txt ----------------------
+Graph loadGraph(const std::string& filename) {
+    Graph g;
+    std::ifstream in(filename);
+    if (!in.is_open()) {
+        std::cerr << "❌ Failed to open " << filename << std::endl;
         return g;
     }
 
+    std::string line;
     long long currentNode = -1;
-    int edgeCount = 0;
 
-    while (std::getline(txt, line)) {
+    while (std::getline(in, line)) {
         if (line.empty()) continue;
         std::stringstream ss(line);
         std::string token;
@@ -130,25 +82,13 @@ Graph loadGraph(const std::string& nodesCSV, const std::string& edgesTXT) {
             long long neighbor = std::stoll(token);
             double weight;
             ss >> weight;
-
-            // ✅ Add edge only if both nodes exist
-            if (g.get_nodes().find(currentNode) != g.get_nodes().end() &&
-                g.get_nodes().find(neighbor) != g.get_nodes().end()) {
-                g.adEdge(currentNode, neighbor, weight);
-                edgeCount++;
-            } else {
-                std::cerr << "⚠️  Skipped edge (" << currentNode << " → " << neighbor 
-                          << ") because one of the nodes was missing.\n";
-            }
+            g.adEdge(currentNode, neighbor, weight);
         }
     }
 
-    txt.close();
-    std::cout << "✅ Loaded " << edgeCount << " edges from " << edgesTXT << std::endl;
-
+    std::cout << "✅ Graph edges loaded from " << filename << std::endl;
     return g;
 }
-
 
 //---------------------- Find nearest node by lat/lng ----------------------
 long long findNearestNode(Graph& g, double lat, double lng) {
@@ -167,8 +107,16 @@ long long findNearestNode(Graph& g, double lat, double lng) {
 int main() {
     crow::App<CORS> app;
 
-    // Graph g = loadGraph("nodes.txt");
-    Graph g = loadGraph("nodes.csv", "nodes.txt");
+    Graph g;
+    loadNodeCoordinates(g, "nodes.csv");
+    Graph edges = loadGraph("nodes.txt");
+
+    // merge edges adjacency list into g
+    for (auto& [from, nbrs] : edges.get_adjList()) {
+        for (auto& [to, w] : nbrs) {
+            g.adEdge(from, to, w);
+        }
+    }
 
     Algorithms algo;
 
@@ -204,7 +152,7 @@ int main() {
             }
 
             // Run Dijkstra
-            algo.Dijkstra(g, startNode, endNode);
+            double totalDistance = algo.Dijkstra(g, startNode, endNode);
 
             // Read path coordinates from file saved by Dijkstra
             std::ifstream pathFile("path_cordinates.csv");
@@ -228,8 +176,9 @@ int main() {
                 result["path"][idx]["lng"] = std::stod(lonStr);
                 idx++;
             }
-
+            
             pathFile.close();
+            result["distance_meters"] = totalDistance;
             crow::response res(result);
             res.add_header("Content-Type", "application/json");
             return res;
