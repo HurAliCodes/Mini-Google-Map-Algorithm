@@ -47,36 +47,49 @@ void Algorithms::Astar(Graph & g , long long start, long long end){
 }
 
 //---------------Dijkstra---------------------------------------------
-double Algorithms::Dijkstra(Graph & g, long long start, long long destination) {
+double Algorithms::Dijkstra(Graph &g, long long startId, long long destId) {
     auto &adj = g.get_adjList();
-    unordered_map<long long, double> dist;
-    unordered_map<long long, long long> parent;
+    auto &idToIndex = g.idToIndex;
+    auto &indexToId = g.indexToId;
 
-    for (auto &p : adj) {
-        dist[p.first] = numeric_limits<double>::infinity();
-        parent[p.first] = -1;
-    }
+    // Convert raw IDs → compact indices
+    int start = idToIndex[startId];
+    int dest  = idToIndex[destId];
+
+    int N = indexToId.size();
+
+    // Fixed memory – vectors instead of huge unordered_maps
+    vector<double> dist(N, numeric_limits<double>::infinity());
+    vector<int> parent(N, -1);
 
     dist[start] = 0;
-    priority_queue<pair<double, long long>, vector<pair<double, long long>>, greater<pair<double, long long>>> pq;
-    pq.push({0, start});
+
+    using P = pair<double, int>;
+    priority_queue<P, vector<P>, greater<P>> pq;
+    pq.push({0.0, start});
 
     auto startTime = chrono::high_resolution_clock::now();
 
     while (!pq.empty()) {
-        auto [currentDist, node] = pq.top();
+        auto [currentDist, u] = pq.top();
         pq.pop();
 
-        if (node == destination) break;
+        if (u == dest)
+            break;
 
-        for (auto &neighbour : adj[node]) {
-            long long next = neighbour.first;
-            double weight = neighbour.second;
+        long long uId = indexToId[u];
 
-            if (currentDist + weight < dist[next]) {
-                dist[next] = currentDist + weight;
-                parent[next] = node;
-                pq.push({dist[next], next});
+        // Relax all neighbors
+        for (auto &nbr : adj.at(uId)) {
+            long long vId = nbr.first;
+            double weight = nbr.second;
+
+            int v = idToIndex[vId];
+
+            if (currentDist + weight < dist[v]) {
+                dist[v] = currentDist + weight;
+                parent[v] = u;
+                pq.push({dist[v], v});
             }
         }
     }
@@ -84,14 +97,24 @@ double Algorithms::Dijkstra(Graph & g, long long start, long long destination) {
     auto endTime = chrono::high_resolution_clock::now();
     chrono::duration<double, milli> duration = endTime - startTime;
 
-    cout << "\n--- Dijkstra Algorithm ---\n";
-    printPath(g, parent, start, destination);
-    cout << "Total Distance: " << dist[destination] << " meters\n";
+    cout << "\n--- Dijkstra Algorithm (Optimized) ---\n";
+
+    // Convert parent[] indices → raw IDs
+    unordered_map<long long, long long> rawParent;
+    for (int i = 0; i < N; i++) {
+        if (parent[i] == -1) rawParent[indexToId[i]] = -1;
+        else rawParent[indexToId[i]] = indexToId[parent[i]];
+    }
+
+    // Print path using raw IDs
+    printPath(g, rawParent, startId, destId);
+
+    cout << "Total Distance: " << dist[dest] << " meters\n";
     cout << "Execution Time: " << duration.count() << " ms\n";
 
-    // ✅ Return total distance
-    return dist[destination];
+    return dist[dest];
 }
+
 
 
 void Algorithms::efficiency(Graph & g, long long start, long long end){

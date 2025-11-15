@@ -19,6 +19,5 @@ int main()
     parseOSM(g, "Karachi/Karachi.osm");
     exporttocsv(g);
     exporttotxt(g);
-
     return 0;
 }

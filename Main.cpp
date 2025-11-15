@@ -7,23 +7,30 @@
 #include <unordered_map>
 #include <limits>
 #include <cmath>
+#include <vector>
+#include <set>
 
-struct CORS {
+struct CORS
+{
     struct context {};
 
-    void before_handle(crow::request& req, crow::response& res, context& ctx) {
+    void before_handle(crow::request &req, crow::response &res, context &ctx)
+    {
         res.add_header("Access-Control-Allow-Origin", "*");
         res.add_header("Access-Control-Allow-Methods", "GET, POST, PUT, OPTIONS");
         res.add_header("Access-Control-Allow-Headers", "Content-Type, Authorization");
 
-        if (req.method == "OPTIONS"_method) {
+        if (req.method == "OPTIONS"_method)
+        {
             res.code = 200;
             res.end();
         }
     }
 
-    void after_handle(crow::request& req, crow::response& res, context& ctx) {
-        if (!res.headers.count("Access-Control-Allow-Origin")) {
+    void after_handle(crow::request &req, crow::response &res, context &ctx)
+    {
+        if (!res.headers.count("Access-Control-Allow-Origin"))
+        {
             res.add_header("Access-Control-Allow-Origin", "*");
             res.add_header("Access-Control-Allow-Methods", "GET, POST, PUT, OPTIONS");
             res.add_header("Access-Control-Allow-Headers", "Content-Type, Authorization");
@@ -31,9 +38,12 @@ struct CORS {
     }
 };
 
-void loadNodeCoordinates(Graph& g, const std::string& filename) {
+// Load node coordinates
+void loadNodeCoordinates(Graph &g, const std::string &filename)
+{
     std::ifstream in(filename);
-    if (!in.is_open()) {
+    if (!in.is_open())
+    {
         std::cerr << "❌ Failed to open " << filename << std::endl;
         return;
     }
@@ -41,26 +51,29 @@ void loadNodeCoordinates(Graph& g, const std::string& filename) {
     std::string line;
     std::getline(in, line); // skip header
 
-    while (std::getline(in, line)) {
+    while (std::getline(in, line))
+    {
         std::stringstream ss(line);
         std::string idStr, latStr, lonStr;
         if (!std::getline(ss, idStr, ',')) continue;
         if (!std::getline(ss, latStr, ',')) continue;
         if (!std::getline(ss, lonStr, ',')) continue;
 
-        long long id = std::stoll(idStr);
-        double lat = std::stod(latStr);
-        double lon = std::stod(lonStr);
-
-        g.addNode(id, lat, lon);
+        try
+        {
+            long long id = std::stoll(idStr);
+            double lat = std::stod(latStr);
+            double lon = std::stod(lonStr);
+            g.addNode(id, lat, lon);
+        }
+        catch (...) { continue; }
     }
 
     std::cout << "✅ Node coordinates loaded from " << filename << std::endl;
 }
 
-//---------------------- Load Graph from nodes.txt ----------------------
-Graph loadGraph(const std::string& filename) {
-    Graph g;
+// Load graph edges
+Graph loadGraph(const std::string& filename, Graph& g) {
     std::ifstream in(filename);
     if (!in.is_open()) {
         std::cerr << "❌ Failed to open " << filename << std::endl;
@@ -78,10 +91,15 @@ Graph loadGraph(const std::string& filename) {
 
         if (token == "Node:") {
             ss >> currentNode;
+            if (!g.get_nodes().count(currentNode))
+                g.addNode(currentNode, 0, 0); // placeholder
         } else {
             long long neighbor = std::stoll(token);
-            double weight;
-            ss >> weight;
+            double weight; ss >> weight;
+
+            if (!g.get_nodes().count(neighbor))
+                g.addNode(neighbor, 0, 0); // placeholder
+
             g.adEdge(currentNode, neighbor, weight);
         }
     }
@@ -90,11 +108,13 @@ Graph loadGraph(const std::string& filename) {
     return g;
 }
 
-//---------------------- Find nearest node by lat/lng ----------------------
-long long findNearestNode(Graph& g, double lat, double lng) {
+// Find nearest connected node (optional: next nearest if path fails)
+long long findNearestConnectedNode(Graph& g, double lat, double lng, const std::set<long long>& exclude = {}) {
     double minDist = std::numeric_limits<double>::infinity();
     long long nearest = -1;
     for (auto& [id, node] : g.get_nodes()) {
+        if (g.get_adjList()[id].empty()) continue; // skip disconnected
+        if (exclude.count(id)) continue;
         double d = g.haversine(lat, node.get_latitude(), lng, node.get_longitude());
         if (d < minDist) {
             minDist = d;
@@ -104,35 +124,31 @@ long long findNearestNode(Graph& g, double lat, double lng) {
     return nearest;
 }
 
-int main() {
+int main()
+{
     crow::App<CORS> app;
 
     Graph g;
     loadNodeCoordinates(g, "nodes.csv");
-    Graph edges = loadGraph("nodes.txt");
+    loadGraph("nodes.txt", g);
 
-    // merge edges adjacency list into g
-    for (auto& [from, nbrs] : edges.get_adjList()) {
-        for (auto& [to, w] : nbrs) {
-            g.adEdge(from, to, w);
-        }
-    }
+    g.buildNodeIndexMapping();
+    std::cout << "✅ Node index mapping built. Total indexed nodes: " << g.indexToId.size() << std::endl;
 
     Algorithms algo;
 
     // Health check
-    CROW_ROUTE(app, "/")([]() {
-        return "✅ Server is running!";
-    });
+    CROW_ROUTE(app, "/")([]() { return "✅ Server is running!"; });
 
     // Shortest path route
-    CROW_ROUTE(app, "/shortest-path").methods("POST"_method)
-    ([&](const crow::request& req){
+    CROW_ROUTE(app, "/shortest-path").methods("POST"_method)([&](const crow::request &req)
+    {
         try {
             auto body = crow::json::load(req.body);
             if (!body || !body.has("start") || !body.has("end") ||
                 !body["start"].has("lat") || !body["start"].has("lng") ||
-                !body["end"].has("lat") || !body["end"].has("lng")) {
+                !body["end"].has("lat") || !body["end"].has("lng"))
+            {
                 return crow::response(400, "Invalid JSON or missing start/end lat/lng");
             }
 
@@ -141,43 +157,47 @@ int main() {
             double endLat   = body["end"]["lat"].d();
             double endLng   = body["end"]["lng"].d();
 
-            long long startNode = findNearestNode(g, startLat, startLng);
-            long long endNode   = findNearestNode(g, endLat, endLng);
+            std::set<long long> triedStart, triedEnd;
+            long long startNode = -1, endNode = -1;
+            double totalDistance = std::numeric_limits<double>::infinity();
 
-            cout<<"Start Node: "<<startNode;
-            cout<<"End Node: "<<endNode;
+            // Try nearest connected nodes until a valid path is found
+            while (totalDistance == std::numeric_limits<double>::infinity()) {
+                startNode = findNearestConnectedNode(g, startLat, startLng, triedStart);
+                endNode   = findNearestConnectedNode(g, endLat, endLng, triedEnd);
 
-            if (startNode == -1 || endNode == -1) {
-                return crow::response(500, "Failed to find nearest nodes");
+                if (startNode == -1 || endNode == -1)
+                    return crow::response(500, "Failed to find nearest connected nodes");
+
+                triedStart.insert(startNode);
+                triedEnd.insert(endNode);
+
+                totalDistance = algo.Dijkstra(g, startNode, endNode);
+
+                if (totalDistance != std::numeric_limits<double>::infinity())
+                    break; // path found
             }
 
-            // Run Dijkstra
-            double totalDistance = algo.Dijkstra(g, startNode, endNode);
-
-            // Read path coordinates from file saved by Dijkstra
+            // Read path coordinates from file
             std::ifstream pathFile("path_cordinates.csv");
-            if (!pathFile.is_open()) {
-                return crow::response(500, "Failed to read path coordinates");
-            }
+            if (!pathFile.is_open()) return crow::response(500, "Failed to read path coordinates");
 
             std::string line;
-            std::getline(pathFile, line); // Skip header
+            std::getline(pathFile, line); // skip header
             crow::json::wvalue result;
             result["path"] = crow::json::wvalue::list();
             int idx = 0;
-
             while (std::getline(pathFile, line)) {
                 std::stringstream ss(line);
                 std::string latStr, lonStr;
                 if (!std::getline(ss, latStr, ',')) break;
                 if (!std::getline(ss, lonStr, ',')) break;
-
                 result["path"][idx]["lat"] = std::stod(latStr);
                 result["path"][idx]["lng"] = std::stod(lonStr);
                 idx++;
             }
-            
             pathFile.close();
+
             result["distance_meters"] = totalDistance;
             crow::response res(result);
             res.add_header("Content-Type", "application/json");

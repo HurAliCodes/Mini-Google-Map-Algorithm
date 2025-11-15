@@ -52,3 +52,15 @@ void Graph::printGraph(){
         cout<<endl;
     }
 }
+
+void Graph::buildNodeIndexMapping() {
+    idToIndex.clear();
+    indexToId.clear();
+
+    int index = 0;
+    for (auto &p : adjList) {
+        idToIndex[p.first] = index;
+        indexToId.push_back(p.first);
+        index++;
+    }
+}
