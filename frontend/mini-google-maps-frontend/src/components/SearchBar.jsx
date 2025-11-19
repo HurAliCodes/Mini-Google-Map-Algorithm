@@ -74,7 +74,7 @@ export default function SearchBar({ onSetStart, onSetEnd, className }) {
             <div key={place.id} className="result" role="option">
               <div style={{flex:1}}>
                 <div style={{fontSize:14,fontWeight:600,color:'var(--text)'}}>{place.name}</div>
-                <div style={{fontSize:12,color:'var(--muted)'}}>{place.lat.toFixed(5)}, {place.lng.toFixed(5)}</div>
+                {/* <div style={{fontSize:12,color:'var(--muted)'}}>{place.lat.toFixed(5)}, {place.lng.toFixed(5)}</div> */}
               </div>
               <div style={{display:'flex',gap:8}}>
                 <button className="button" onClick={() => onSetStart && onSetStart(place)}>Start</button>

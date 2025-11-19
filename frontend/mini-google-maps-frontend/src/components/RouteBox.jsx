@@ -23,15 +23,15 @@ export default function RouteBox({
     <div className="routebox" role="region" aria-live="polite">
       {routeFound ? (
         <>
-          <div className="meta">Route summary</div>
+          <div className="meta">Distance</div>
 
           {/* Prominent distance like Google Maps */}
-          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12}}>
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:8}}>
             <div>
               <div style={{fontSize:20,fontWeight:800,color:'var(--text)'}}>
                 {formatDistance(distanceMeters)}
               </div>
-              <div style={{fontSize:13,color:'var(--muted)'}}>{pathPointsCount} points · {destination ? (destination.name || '') : ''}</div>
+              <div style={{fontSize:13,color:'var(--muted)'}}>{destination ? (destination.name || '') : ''}</div>
             </div>
 
             <div style={{display:'flex',gap:8}}>
@@ -40,25 +40,18 @@ export default function RouteBox({
             </div>
           </div>
 
-          <div style={{display:'flex',gap:12,flexWrap:'wrap',marginBottom:8}}>
-            <div style={{minWidth:140}}>
-              <div style={{fontSize:12,color:'var(--muted)'}}>Driving</div>
-              <div style={{fontWeight:700}}>{estimates?.driving || '--'}</div>
+          <div style={{display:'flex',gap:12,flexWrap:'wrap',marginBottom:8,justifyContent:'space-between'}}>
+            <div style={{display:'flex',gap:30}}>
+              <div style={{minWidth:140, display:'flex',gap:5, alignItems:'flex-end'}}>
+                <div style={{fontSize:14,color:'var(--muted)',marginRight:4}}><i class="fa-solid fa-car"></i></div>
+                <div style={{fontWeight:500, fontSize:'14px'}}>{estimates?.driving || '--'}</div>
+              </div>
+              <div style={{minWidth:140, display:'flex',gap:5, alignItems:'flex-end'}}>
+                <div style={{fontSize:14,color:'var(--muted)',marginRight:4}}><i class="fa-solid fa-person-walking"></i></div>
+                <div style={{fontWeight:500, fontSize:'14px'}}>{estimates?.walking || '--'}</div>
+              </div>
             </div>
 
-            <div style={{minWidth:140}}>
-              <div style={{fontSize:12,color:'var(--muted)'}}>Walking</div>
-              <div style={{fontWeight:700}}>{estimates?.walking || '--'}</div>
-            </div>
-
-            <div style={{minWidth:120}}>
-              <div style={{fontSize:12,color:'var(--muted)'}}>Steps</div>
-              <div style={{fontWeight:700}}>{pathPointsCount}</div>
-            </div>
-          </div>
-
-          <div style={{display:'flex',justifyContent:'flex-end',gap:8,flexWrap:'wrap'}}>
-           
             <div style={{display:'flex',gap:8}}>
               <button className="button" onClick={onClear}>Clear</button>
             </div>

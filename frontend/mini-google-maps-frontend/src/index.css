@@ -103,20 +103,30 @@ button{
   flex:1;
   display:flex;
   justify-content:center;
-  padding:0 8px;
+  flex-direction: column;
+  position: relative;
 }
 .searchbar{
   width:min(920px,100%);
   display:flex;
   gap:8px;
   align-items:center;
-  padding:8px;
+  padding:5px;
   background:var(--card-bg);
   border-radius:12px;
   box-shadow:var(--shadow-sm);
   border:1px solid var(--border);
   max-height:44px;
   transition: background-color .3s ease, border-color .3s ease, box-shadow .3s ease;
+  margin: auto;
+  box-shadow: inset 1px 1px 2px rgb(231, 231, 231),inset -1px -1px 5px rgb(232, 232, 232);
+}
+.search-results{
+  position: absolute !important;
+  top: 100%;
+  width:min(920px,100%);
+  left: 50%;
+  transform: translateX(-50%);
 }
 .search-input{
   flex:1;
@@ -148,9 +158,13 @@ button{
   cursor:pointer;
   font-weight:600;
   transition: background-color .2s ease;
+  box-shadow: 1px 1px 2px rgb(130, 130, 130),-1px -1px 4px rgb(255, 255, 255);
 }
-.search-btn:hover{
-  background:var(--primary-hover);
+[data-theme="dark"]{
+  .search-btn{
+      box-shadow: none !important;
+  }
+  .searchbar{box-shadow: none;}
 }
 
 /* Theme toggle (button) */
@@ -390,7 +404,7 @@ button{
   display:flex;
   gap:8px;
   justify-content:space-between;
-  align-items:center;
+  align-items:flex-start;
   flex-wrap:wrap;
 }
 
@@ -464,14 +478,16 @@ button{
 /* Responsive adjustments */
 @media (max-width:1100px){
   .sidebar{width:300px}
-  .searchbar{width:700px}
+  .searchbar,.search-results{width:700px}
 }
 
 @media (max-width:900px){
   .brand .title{display:none}
-  .searchbar{width:calc(100% - 120px)}
+  .searchbar,.search-results{width:100%}
   .map-top-left{left:12px;top:110px}
   .routebox{min-width:88vw;bottom:10px} 
+  .search-input{width: 100%;}
+  .brand{max-width: max-content;min-width: 52px;}
 }
 
 @media (max-width:600px){
@@ -488,7 +504,20 @@ button{
   .button{padding:0.4rem 0.7rem;font-size:13px}
   .sidebar{width:280px}
   .sidebar.collapsed{width:60px}
+  .search-results .result{flex-direction: column; align-items: flex-start;}
 }
 
 /* keep existing tweak */
 .leaflet-control-zoom{display:none}
+
+/* Car fallback */
+.fa-car::before {
+  content: "\f1b9", " Driving"; 
+  font-family: "Font Awesome 6 Free", sans-serif;
+}
+
+/* Walking fallback */
+.fa-person-walking::before {
+  content: "\f554", " Walking";
+  font-family: "Font Awesome 6 Free", sans-serif;
+}

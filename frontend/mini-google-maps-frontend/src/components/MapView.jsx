@@ -50,11 +50,10 @@ export default function MapView({ theme, onToggleTheme }) {
   const [path, setPath] = useState([]);
   const [routeHistory, setRouteHistory] = useState([]);
   const [awaitingStart, setAwaitingStart] = useState(false);
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
   const [distanceMeters, setDistanceMeters] = useState(0);
   const [estimates, setEstimates] = useState({ driving: null, walking: null });
   const mapRef = useRef(null);
-  const mapReadyRef = useRef(false);
   const mountedRef = useRef(false);
 
   const handleMapClick = (latlng) => {
@@ -150,12 +149,16 @@ export default function MapView({ theme, onToggleTheme }) {
         }
         if (command.action === 'fit') {
           if (!path || path.length === 0) return;
-          // ensure layout is recalculated first
           map.invalidateSize && map.invalidateSize();
           const bounds = L.latLngBounds(path.map((p) => [p.lat, p.lng]));
-          map.fitBounds(bounds.pad ? bounds.pad(0.15) : bounds, { padding: [50, 50], maxZoom: 18, animate: true });
+          map.fitBounds(bounds, { padding: [50, 50, 500, 50], maxZoom: 18, animate: true });
           return;
         }
+        if (command.action === 'center' && command.place) {
+          map.setView([command.place.lat, command.place.lng], 15, { animate: true });
+          return;
+        }
+
       } catch (err) {
         console.error('MapActions command failed', err);
       }
@@ -168,46 +171,24 @@ export default function MapView({ theme, onToggleTheme }) {
   const handleZoomIn = () => setMapCommand((c) => ({ id: c.id + 1, action: 'zoomIn' }));
   const handleZoomOut = () => setMapCommand((c) => ({ id: c.id + 1, action: 'zoomOut' }));
   const handleFitRoute = () => setMapCommand((c) => ({ id: c.id + 1, action: 'fit' }));
+  const centerMapOn = (place) => setMapCommand((c) => ({ id: c.id + 1, action: "center", place }));
+
 
   // Map control helpers
   const getMap = () => mapRef.current;
 
-  const fitRouteBounds = () => {
-    const map = getMap();
-    if (!map || !path || !path.length) {
-      console.warn('fitRouteBounds: map or path not ready');
-      return;
-    }
-
-    // ensure layout recalculated and run on next frame
-    map.invalidateSize && map.invalidateSize();
-    // small delay to let invalidateSize take effect when called after layout changes
-    requestAnimationFrame(() => {
-      try {
-        const bounds = L.latLngBounds(path.map((p) => [p.lat, p.lng]));
-        // use fitBounds with a safe maxZoom and padding
-        map.fitBounds(bounds, { padding: [60, 60], maxZoom: 18, animate: true });
-      } catch (err) {
-        console.error('fitBounds error:', err);
-        const mid = path[Math.floor(path.length / 2)];
-        if (mid) map.setView([mid.lat, mid.lng], Math.max(map.getZoom ? map.getZoom() : 13, 13));
-      }
-    });
-  };
 
   // ---- Route logic ----
 
   const setStart = (place) => {
     const start = { lat: place.lat, lng: place.lng, name: place.name };
     setPoints([start, ...(destination ? [destination] : [])]);
-    centerMap(place);
     setAwaitingStart(false);
   };
 
   const setEnd = (place) => {
     const end = { lat: place.lat, lng: place.lng, name: place.name };
     setDestination(end);
-    centerMap(place);
   };
 
   const clearAll = () => {
@@ -241,6 +222,7 @@ export default function MapView({ theme, onToggleTheme }) {
           name: 'My Location',
         };
         setStart(place);
+        centerMapOn(place); 
       },
       (err) => alert('Unable to get current location: ' + err.message),
       { enableHighAccuracy: true, timeout: 10000 }
@@ -260,13 +242,12 @@ export default function MapView({ theme, onToggleTheme }) {
       if (!res.data?.path) throw new Error('Invalid path response');
       setPath(res.data.path);
       if (res.data.distance_meters) setDistanceMeters(res.data.distance_meters);
-
-      // NOTE: do NOT auto-center when new path is found (user requested)
-      // removed auto fitRouteBounds here
+      handleFitRoute();
+      
     } catch (err) {
       console.error('Route fetch error:', err);
       setPath(generateMockPath(start, end));
-      // removed auto fitRouteBounds here
+      handleFitRoute()
     }
   };
 
@@ -280,7 +261,7 @@ export default function MapView({ theme, onToggleTheme }) {
         lng: start.lng + t * (end.lng - start.lng),
       });
     }
-    return arr;
+   return arr;
   };
 
   const saveCurrentRoute = () => {
