@@ -78,6 +78,10 @@ button{
   background:linear-gradient(180deg, rgba(15,23,40,0.96), rgba(15,23,40,0.9));
 }
 
+[data-theme="dark"] .leaflet-shadow-pane {
+  display: none !important;
+}
+
 .brand{
   display:flex;
   align-items:center;
@@ -148,6 +152,9 @@ button{
   align-items:center;
   color:var(--text-secondary);
   transition: color .3s ease;
+}
+.search-actions .searching{
+  margin-right: 18px;
 }
 .search-btn{
   background:var(--primary);

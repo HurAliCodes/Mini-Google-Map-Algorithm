@@ -184,11 +184,13 @@ export default function MapView({ theme, onToggleTheme }) {
     const start = { lat: place.lat, lng: place.lng, name: place.name };
     setPoints([start, ...(destination ? [destination] : [])]);
     setAwaitingStart(false);
+    centerMapOn(start)
   };
-
+  
   const setEnd = (place) => {
     const end = { lat: place.lat, lng: place.lng, name: place.name };
     setDestination(end);
+    centerMapOn(end)
   };
 
   const clearAll = () => {
