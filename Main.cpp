@@ -172,7 +172,7 @@ int main()
                 triedStart.insert(startNode);
                 triedEnd.insert(endNode);
 
-                totalDistance = algo.Dijkstra(g, startNode, endNode);
+                totalDistance = algo.Astar(g, startNode, endNode);
 
                 if (totalDistance != std::numeric_limits<double>::infinity())
                     break; // path found

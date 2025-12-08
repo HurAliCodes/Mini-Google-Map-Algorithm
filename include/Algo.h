@@ -16,7 +16,7 @@ class Algorithms{
  
         //Algorithms
         static double Dijkstra(Graph & g , long long start, long long end);
-        static void Astar(Graph & g , long long start, long long end);
+        static double Astar(Graph & g , long long start, long long end);
 
         //Efficiency
         static void efficiency(Graph & g, long long start, long long end);
