@@ -20,9 +20,15 @@ public:
     void adEdge(long long from, long long to);
     void buildNodeIndexMapping();
     // Getters
+    const unordered_map<long long, vector<pair<long long, double>>> &get_adjList() const;
     unordered_map<long long, vector<pair<long long, double>>> &get_adjList();
     unordered_map<long long, Node> &get_nodes();
     void printGraph();
+    // Add inside public section
+    const vector<pair<long long, double>> &getNeighbors(long long id) const;
+    bool hasNode(long long id) const;
+    const unordered_map<long long, Node>& get_nodes() const;  // add this line
+
 };
 
 #endif
