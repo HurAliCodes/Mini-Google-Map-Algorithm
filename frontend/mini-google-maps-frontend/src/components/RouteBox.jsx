@@ -8,20 +8,52 @@ function formatDistance(meters) {
 
 export default function RouteBox({
   destination,
+  stop,
   awaitingStart,
+  awaitingStop,
   onFindRoute,
   onUseCurrentLocation,
+  onAddStop,
+  onClearStop,
   onClear,
   onSaveRoute,
   routeFound,
   distanceMeters,
   estimates,
   onFitRoute,
-  pathPointsCount
+  pathPointsCount,
+  navActive,
+  onToggleNavigation
 }) {
   return (
     <div className="routebox" role="region" aria-live="polite">
-      {routeFound ? (
+      {navActive ? (
+        <>
+          <div className="meta">Navigation</div>
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:8}}>
+            <div>
+              <div style={{fontSize:20,fontWeight:800,color:'var(--text)'}}>
+                {formatDistance(distanceMeters)}
+              </div>
+              <div style={{fontSize:13,color:'var(--muted)'}}>{destination ? (destination.name || '') : ''}</div>
+            </div>
+            <div style={{display:'flex',gap:8}}>
+              <button className="button" onClick={onFitRoute}>Center route</button>
+              <button className="button" onClick={onToggleNavigation}>Stop Navigation</button>
+            </div>
+          </div>
+          <div style={{display:'flex',gap:30,marginBottom:8}}>
+            <div style={{minWidth:140, display:'flex',gap:5, alignItems:'flex-end'}}>
+              <div style={{fontSize:14,color:'var(--muted)',marginRight:4}}><i class="fa-solid fa-car"></i></div>
+              <div style={{fontWeight:500, fontSize:'14px'}}>{estimates?.driving || '--'}</div>
+            </div>
+            <div style={{minWidth:140, display:'flex',gap:5, alignItems:'flex-end'}}>
+              <div style={{fontSize:14,color:'var(--muted)',marginRight:4}}><i class="fa-solid fa-person-walking"></i></div>
+              <div style={{fontWeight:500, fontSize:'14px'}}>{estimates?.walking || '--'}</div>
+            </div>
+          </div>
+        </>
+      ) : routeFound ? (
         <>
           <div className="meta">Distance</div>
 
@@ -37,6 +69,7 @@ export default function RouteBox({
             <div style={{display:'flex',gap:8}}>
               <button className="button" onClick={onFitRoute} title="Fit route on map">Center route</button>
               <button className="button" onClick={onSaveRoute} title="Save route">Save</button>
+              <button className="button" onClick={onToggleNavigation}>Start Navigation</button>
             </div>
           </div>
 
@@ -56,6 +89,11 @@ export default function RouteBox({
               <button className="button" onClick={onClear}>Clear</button>
             </div>
           </div>
+          {stop ? (
+            <div style={{fontSize:12,color:'var(--muted)',marginTop:4}}>
+              Via: {stop.name || `${stop.lat.toFixed(5)}, ${stop.lng.toFixed(5)}`}
+            </div>
+          ) : null}
         </>
       ) : destination ? (
         <>
@@ -73,14 +111,20 @@ export default function RouteBox({
               <button className="button" onClick={onClear}>Clear</button>
             </div>
 
-            {awaitingStart ? (
-              <div style={{display:'flex',gap:8}}>
+            <div style={{display:'flex',gap:8}}>
+              {!stop ? (
+                <button className="button" onClick={onAddStop}>Add Stop</button>
+              ) : (
+                <button className="button" onClick={onClearStop}>Clear Stop</button>
+              )}
+              {awaitingStart ? (
                 <button className="button" onClick={onUseCurrentLocation}>Use Current Location</button>
-              </div>
-            ) : null}
+              ) : null}
+            </div>
           </div>
 
           {awaitingStart && <div style={{marginTop:8,color:'var(--muted)',fontSize:13}}>Click map to place starting point or use your current location.</div>}
+          {awaitingStop && <div style={{marginTop:6,color:'var(--muted)',fontSize:13}}>Click map or pick from search to add a stop.</div>}
         </>
       ) : (
         <div style={{fontSize:13,color:'var(--muted)'}}>Select a destination on the map or via search to plan your route.</div>

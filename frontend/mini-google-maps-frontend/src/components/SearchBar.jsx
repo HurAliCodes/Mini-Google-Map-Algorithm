@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState, useRef } from 'react';
 import axios from 'axios';
 
-export default function SearchBar({ onSetStart, onSetEnd, className }) {
+export default function SearchBar({ onSetStart, onSetEnd, onSetStop, className }) {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -55,13 +55,28 @@ export default function SearchBar({ onSetStart, onSetEnd, className }) {
     setResults([]);
   };
 
+  // Auto-fetch when typing (debounced)
+useEffect(() => {
+  if (!query || query.trim().length < 2) {
+    setResults([]);
+    return;
+  }
+
+  const delay = setTimeout(() => {
+    fetchResults();
+  }, 400); // debounce 400ms
+
+  return () => clearTimeout(delay);
+}, [query]);
+
+
   return (
     <div ref={wrapperRef} className={className ? className + ' searchbar-wrapper' : 'searchbar-wrapper'}>
       <div className="searchbar" role="search" aria-label="Search places" style={{ position: 'relative' }}>
         <input
           className="search-input"
           value={query}
-          onChange={(e) => setQuery(e.target.value)}
+          onChange={(e) =>{ setQuery(e.target.value)}}
           placeholder="Search places, addresses or coordinates"
         />
         {query && (
@@ -99,6 +114,7 @@ export default function SearchBar({ onSetStart, onSetEnd, className }) {
               <div style={{ display: 'flex', gap: 8 }}>
                 <button className="button" onClick={() => { onSetStart && onSetStart(place); clearSearch(); }}>Start</button>
                 <button className="button" onClick={() => { onSetEnd && onSetEnd(place); clearSearch(); }}>End</button>
+                <button className="button" onClick={() => { onSetStop && onSetStop(place); clearSearch(); }}>Stop</button>
               </div>
             </div>
           ))}

@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { MapContainer, TileLayer, Marker, Polyline, useMapEvents, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Polyline, useMapEvents, useMap, CircleMarker } from 'react-leaflet';
 import L from 'leaflet';
 import { fixDefaultIcon } from '../utils/leafletIconFix';
 import axios from 'axios';
@@ -47,17 +47,33 @@ function haversineMeters(a, b) {
 export default function MapView({ theme, onToggleTheme }) {
   const [points, setPoints] = useState([]);
   const [destination, setDestination] = useState(null);
+  const [stop, setStop] = useState(null);
   const [path, setPath] = useState([]);
   const [routeHistory, setRouteHistory] = useState([]);
   const [awaitingStart, setAwaitingStart] = useState(false);
+  const [awaitingStop, setAwaitingStop] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
   const [distanceMeters, setDistanceMeters] = useState(0);
   const [estimates, setEstimates] = useState({ driving: null, walking: null });
   const mapRef = useRef(null);
   const mountedRef = useRef(false);
+  const [isFetching, setIsFetching] = useState(false);
+  const [simActive, setSimActive] = useState(false);
+  const [simIdx, setSimIdx] = useState(0);
+  const [simPos, setSimPos] = useState(null);
+  const simTimerRef = useRef(null);
+  const [navActive, setNavActive] = useState(false);
+  const watchIdRef = useRef(null);
+  const DEVIATE_THRESHOLD_M = 50;
 
   const handleMapClick = (latlng) => {
+    if (navActive || isFetching || path.length > 0) return;
     const place = { lat: latlng.lat, lng: latlng.lng, name: 'Dropped Pin' };
+    if (awaitingStop) {
+      setStop(place);
+      setAwaitingStop(false);
+      return;
+    }
     if (awaitingStart) {
       setStart(place);
     } else {
@@ -155,7 +171,8 @@ export default function MapView({ theme, onToggleTheme }) {
           return;
         }
         if (command.action === 'center' && command.place) {
-          map.setView([command.place.lat, command.place.lng], 15, { animate: true });
+          const currentZoom = map.getZoom();
+          map.setView([command.place.lat, command.place.lng], currentZoom, { animate: true });
           return;
         }
 
@@ -177,10 +194,22 @@ export default function MapView({ theme, onToggleTheme }) {
   // Map control helpers
   const getMap = () => mapRef.current;
 
+  // No auto-recompute: user must press "Find Route"
+
+  // Ensure geolocation watch is cleared on unmount
+  useEffect(() => {
+    return () => {
+      try {
+        if (watchIdRef.current != null) navigator.geolocation.clearWatch(watchIdRef.current);
+      } catch (e) {}
+    };
+  }, []);
+
 
   // ---- Route logic ----
 
   const setStart = (place) => {
+    if (isFetching || path.length > 0) return; // lock while route is calculating or exists
     const start = { lat: place.lat, lng: place.lng, name: place.name };
     setPoints([start, ...(destination ? [destination] : [])]);
     setAwaitingStart(false);
@@ -188,18 +217,30 @@ export default function MapView({ theme, onToggleTheme }) {
   };
   
   const setEnd = (place) => {
+    if (isFetching || path.length > 0) return; // lock while route is calculating or exists
     const end = { lat: place.lat, lng: place.lng, name: place.name };
     setDestination(end);
     centerMapOn(end)
   };
 
+  const setIntermediateStop = (place) => {
+    if (isFetching || path.length > 0) return; // lock while route is calculating or exists
+    const s = { lat: place.lat, lng: place.lng, name: place.name };
+    setStop(s);
+    setAwaitingStop(false);
+    centerMapOn(s);
+  };
+
   const clearAll = () => {
     setPoints([]);
     setDestination(null);
+    setStop(null);
     setPath([]);
+    setIsFetching(false);
     setDistanceMeters(0);
     setEstimates({ driving: null, walking: null });
     setAwaitingStart(false);
+    setAwaitingStop(false);
   };
 
   const beginRoutePlanning = async () => {
@@ -214,6 +255,97 @@ export default function MapView({ theme, onToggleTheme }) {
     await fetchPath();
   };
 
+  const beginAddStop = () => {
+    if (!destination) {
+      alert('Select destination first.');
+      return;
+    }
+    setAwaitingStop(true);
+  };
+
+  const startNavigation = () => {
+    if (!destination) return alert('Select destination first.');
+    if (!navigator.geolocation) return alert('Geolocation not supported');
+    setAwaitingStart(false);
+    setAwaitingStop(false);
+    // initial position
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const place = { lat: pos.coords.latitude, lng: pos.coords.longitude, name: 'My Location' };
+        setPoints(([_, ...rest]) => [{ ...place }, ...(destination ? [destination] : [])]);
+        try {
+          const end = destination || (points[1] ? points[1] : null);
+          if (end) fetchPathFrom(place, end);
+        } catch (e) {}
+      },
+      (err) => console.warn('Initial position failed: ' + err.message),
+      { enableHighAccuracy: true, timeout: 8000 }
+    );
+    // start watch
+    try {
+      watchIdRef.current = navigator.geolocation.watchPosition(
+        (pos) => {
+          const place = { lat: pos.coords.latitude, lng: pos.coords.longitude, name: 'My Location' };
+          setPoints(([curStart, ...rest]) => [{ ...place }, ...(destination ? [destination] : [])]);
+          try {
+            const p = { lat: place.lat, lng: place.lng };
+            let dev = Infinity;
+            if (path && path.length > 1) {
+              const cosLat = Math.cos((p.lat * Math.PI) / 180);
+              const toXY = (ll) => ({ x: (ll.lng * Math.PI) / 180 * cosLat, y: (ll.lat * Math.PI) / 180 });
+              const P = toXY(p);
+              for (let i = 1; i < path.length; i++) {
+                const A = toXY(path[i - 1]);
+                const B = toXY(path[i]);
+                const vx = B.x - A.x;
+                const vy = B.y - A.y;
+                const wx = P.x - A.x;
+                const wy = P.y - A.y;
+                const c1 = vx * wx + vy * wy;
+                const c2 = vx * vx + vy * vy;
+                let t = c2 > 0 ? c1 / c2 : 0;
+                if (t < 0) t = 0; else if (t > 1) t = 1;
+                const nx = A.x + t * vx;
+                const ny = A.y + t * vy;
+                const dx = P.x - nx;
+                const dy = P.y - ny;
+                const dRad = Math.sqrt(dx * dx + dy * dy);
+                const dMeters = 6371000 * dRad;
+                if (dMeters < dev) dev = dMeters;
+              }
+            }
+            if (!path || path.length < 2 || dev > DEVIATE_THRESHOLD_M) {
+              const end = destination || (points[1] ? points[1] : null);
+              if (end) fetchPathFrom(place, end);
+            }
+          } catch (e) {}
+          centerMapOn(place);
+        },
+        (err) => console.error('watchPosition error:', err),
+        { enableHighAccuracy: true, maximumAge: 1000, timeout: 10000 }
+      );
+      setNavActive(true);
+    } catch (e) {
+      console.error('Failed to start navigation', e);
+    }
+  };
+
+  const stopNavigation = () => {
+    try {
+      if (watchIdRef.current != null) {
+        navigator.geolocation.clearWatch(watchIdRef.current);
+        watchIdRef.current = null;
+      }
+    } catch (e) {
+      console.warn('clearWatch failed', e);
+    }
+    setNavActive(false);
+  };
+
+  const toggleNavigation = () => {
+    if (navActive) stopNavigation(); else startNavigation();
+  };
+
   const useCurrentLocation = () => {
     if (!navigator.geolocation) return alert('Geolocation not supported');
     navigator.geolocation.getCurrentPosition(
@@ -223,35 +355,35 @@ export default function MapView({ theme, onToggleTheme }) {
           lng: pos.coords.longitude,
           name: 'My Location',
         };
-        setStart(place);
-        centerMapOn(place); 
+        if (!isFetching && path.length === 0) {
+          setStart(place);
+          centerMapOn(place);
+        }
       },
       (err) => alert('Unable to get current location: ' + err.message),
       { enableHighAccuracy: true, timeout: 10000 }
     );
   };
 
+  const fetchSegment = async (a, b) => {
+    try {
+      const res = await axios.post('http://127.0.0.1:5000/shortest-path', { start: a, end: b });
+      if (!res.data?.path || !Array.isArray(res.data.path)) throw new Error('Invalid path response');
+      return { path: res.data.path, distance: res.data.distance_meters };
+    } catch (err) {
+      console.error('Route segment fetch error:', err);
+      return { path: generateMockPath(a, b), distance: null };
+    }
+  };
+
   const fetchPath = async () => {
     const start = points[0];
     const end = destination || points[1];
     if (!start || !end) return alert('Select both start and destination.');
-
-    try {
-      const res = await axios.post('http://127.0.0.1:5000/shortest-path', {
-        start,
-        end
-      });
-      if (!res.data?.path) throw new Error('Invalid path response');
-      setPath(res.data.path);
-      if (res.data.distance_meters) setDistanceMeters(res.data.distance_meters);
-      handleFitRoute();
-      
-    } catch (err) {
-      console.error('Route fetch error:', err);
-      setPath(generateMockPath(start, end));
-      handleFitRoute()
-    }
+    await fetchPathFrom(start, end);
   };
+
+  // (removed simulation ticking; live navigation uses geolocation watch)
 
   const generateMockPath = (start, end) => {
     const steps = 10;
@@ -266,6 +398,35 @@ export default function MapView({ theme, onToggleTheme }) {
    return arr;
   };
 
+  const fetchPathFrom = async (start, end) => {
+    if (!start || !end) return;
+    setIsFetching(true);
+    if (stop) {
+      const seg1 = await fetchSegment(start, stop);
+      const seg2 = await fetchSegment(stop, end);
+      const merged = [...(seg1.path || []), ...((seg2.path || []).slice(1))];
+      setPath(merged);
+      let total = 0;
+      if (seg1.distance && seg2.distance) {
+        total = seg1.distance + seg2.distance;
+      } else {
+        for (let i = 1; i < merged.length; i++) total += haversineMeters(merged[i - 1], merged[i]);
+      }
+      setDistanceMeters(total);
+      setIsFetching(false);
+      return;
+    }
+
+    const seg = await fetchSegment(start, end);
+    setPath(seg.path);
+    let total = 0;
+    if (seg.distance) total = seg.distance; else {
+      for (let i = 1; i < seg.path.length; i++) total += haversineMeters(seg.path[i - 1], seg.path[i]);
+    }
+    setDistanceMeters(total);
+    setIsFetching(false);
+  };
+
   const saveCurrentRoute = () => {
     if (!points[0] || !destination || !path.length)
       return alert('No route to save.');
@@ -275,6 +436,9 @@ export default function MapView({ theme, onToggleTheme }) {
       startName: start.name || 'Start',
       startLat: start.lat,
       startLng: start.lng,
+      stopName: stop ? (stop.name || 'Stop') : null,
+      stopLat: stop ? stop.lat : null,
+      stopLng: stop ? stop.lng : null,
       endName: end.name || 'Destination',
       endLat: end.lat,
       endLng: end.lng,
@@ -288,9 +452,11 @@ export default function MapView({ theme, onToggleTheme }) {
 
   const loadRouteFromHistory = (r) => {
     const s = { lat: r.startLat, lng: r.startLng, name: r.startName };
+    const mid = r.stopLat != null && r.stopLng != null ? { lat: r.stopLat, lng: r.stopLng, name: r.stopName } : null;
     const e = { lat: r.endLat, lng: r.endLng, name: r.endName };
     setPoints([s, e]);
     setDestination(e);
+    setStop(mid);
     setPath(r.path || []);
     setDistanceMeters(r.distance_meters || 0);
 
@@ -318,7 +484,7 @@ export default function MapView({ theme, onToggleTheme }) {
           <div className="title">Mini Maps</div>
         </div>
 
-        <SearchBar onSetStart={setStart} onSetEnd={setEnd} />
+        <SearchBar onSetStart={setStart} onSetEnd={setEnd} onSetStop={setIntermediateStop} />
         <ThemeToggle theme={theme} onToggle={onToggleTheme} />
       </div>
 
@@ -345,14 +511,21 @@ export default function MapView({ theme, onToggleTheme }) {
               }}
             >
               <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-              <ClickHandler onMapClick={handleMapClick} />
-              {points[0] && <Marker position={[points[0].lat, points[0].lng]} />}
-              {destination && <Marker position={[destination.lat, destination.lng]} icon={destinationIcon} />}
+            <ClickHandler onMapClick={handleMapClick} />
+            {points[0] && !navActive && <Marker position={[points[0].lat, points[0].lng]} />}
+            {navActive && points[0] && (
+              <>
+                <CircleMarker center={[points[0].lat, points[0].lng]} radius={10} pathOptions={{ color: '#1a73e8', fillColor: '#1a73e8', fillOpacity: 1 }} />
+                <CircleMarker center={[points[0].lat, points[0].lng]} radius={18} pathOptions={{ color: '#1a73e8', fillColor: '#1a73e8', fillOpacity: 0.15 }} />
+              </>
+            )}
+            {stop && <Marker position={[stop.lat, stop.lng]} />}
+            {destination && <Marker position={[destination.lat, destination.lng]} icon={destinationIcon} />}
               {path.length > 0 && (
                 <Polyline
                   positions={path.map(p => [p.lat, p.lng])}
                   color="#1a73e8"
-                  weight={4}
+                  weight={6}
                   opacity={0.9}
                 />
               )}
@@ -368,13 +541,28 @@ export default function MapView({ theme, onToggleTheme }) {
             <button className="map-fab" title="Zoom out" onClick={handleZoomOut}>－</button>
             <button className="map-fab" title="Center route" onClick={handleFitRoute}>◎</button>
             <button className="map-fab" title="Locate" onClick={useCurrentLocation}>⌖</button>
+            <button className="map-fab" title={navActive ? "Stop navigation" : "Start navigation"} onClick={toggleNavigation}>{navActive ? '■' : '▶'}</button>
           </div>
+
+          {navActive && (
+            <div className="map-top-left">
+              <div style={{ fontWeight: 600 }}>Navigation active</div>
+              <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>Distance: {Math.round(distanceMeters)} m</div>
+              {estimates?.driving && (
+                <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>ETA: {estimates.driving}</div>
+              )}
+            </div>
+          )}
 
           <RouteBox
             destination={destination}
+            stop={stop}
             awaitingStart={awaitingStart}
+            awaitingStop={awaitingStop}
             onFindRoute={beginRoutePlanning}
             onUseCurrentLocation={useCurrentLocation}
+            onAddStop={beginAddStop}
+            onClearStop={() => setStop(null)}
             onClear={clearAll}
             onSaveRoute={saveCurrentRoute}
             routeFound={path.length > 0}
@@ -382,6 +570,8 @@ export default function MapView({ theme, onToggleTheme }) {
             estimates={estimates}
             onFitRoute={handleFitRoute} // RouteBox center uses MapActions now
             pathPointsCount={path.length}
+            navActive={navActive}
+            onToggleNavigation={toggleNavigation}
           />
         </main>
       </div>
