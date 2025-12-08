@@ -1,13 +1,16 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState, useRef } from 'react';
 import axios from 'axios';
 
-export default function SearchBar({ onSetStart, onSetEnd, className }) {
+export default function SearchBar({ onSetStart, onSetEnd, onSetStop, className }) {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  useEffect(() => {
+  const wrapperRef = useRef(null); // detect outside click
+
+  // Fetch results manually
+  const fetchResults = async () => {
     if (!query || query.trim().length < 2) {
       setResults([]);
       setError(null);
@@ -15,23 +18,30 @@ export default function SearchBar({ onSetStart, onSetEnd, className }) {
     }
 
     const controller = new AbortController();
-    const fetch = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&addressdetails=1&limit=6`;
-        const res = await axios.get(url, { signal: controller.signal, headers: { 'Accept-Language': 'en' } });
-        setResults(res.data || []);
-      } catch (e) {
-        if (e.name !== 'CanceledError') setError('Search failed');
-      } finally {
-        setLoading(false);
+    try {
+      setLoading(true);
+      setError(null);
+      const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&addressdetails=1&limit=50&countrycodes=pk&viewbox=66.95,25.40,67.35,24.70&bounded=1`;
+      
+      const res = await axios.get(url, { signal: controller.signal, headers: { 'Accept-Language': 'en' } });
+      setResults(res.data || []);
+    } catch (e) {
+      if (e.name !== 'CanceledError') setError('Search failed');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Hide results on outside click
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (wrapperRef.current && !wrapperRef.current.contains(event.target)) {
+        setResults([]);
       }
     };
-
-    const id = setTimeout(fetch, 360);
-    return () => { clearTimeout(id); controller.abort(); };
-  }, [query]);
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const normalized = useMemo(() => (results || []).map(r => ({
     id: r.place_id,
@@ -40,45 +50,71 @@ export default function SearchBar({ onSetStart, onSetEnd, className }) {
     lng: parseFloat(r.lon),
   })), [results]);
 
+  const clearSearch = () => {
+    setQuery('');
+    setResults([]);
+  };
+
+  // Auto-fetch when typing (debounced)
+useEffect(() => {
+  if (!query || query.trim().length < 2) {
+    setResults([]);
+    return;
+  }
+
+  const delay = setTimeout(() => {
+    fetchResults();
+  }, 400); // debounce 400ms
+
+  return () => clearTimeout(delay);
+}, [query]);
+
+
   return (
-    <div className={className ? className + ' searchbar-wrapper' : 'searchbar-wrapper'}>
-      <div className="searchbar" role="search" aria-label="Search places">
+    <div ref={wrapperRef} className={className ? className + ' searchbar-wrapper' : 'searchbar-wrapper'}>
+      <div className="searchbar" role="search" aria-label="Search places" style={{ position: 'relative' }}>
         <input
           className="search-input"
           value={query}
-          onChange={(e) => setQuery(e.target.value)}
+          onChange={(e) =>{ setQuery(e.target.value)}}
           placeholder="Search places, addresses or coordinates"
         />
+        {query && (
+          <button
+            className="clear-btn"
+            onClick={clearSearch}
+            style={{
+              position: 'absolute',
+              right: 80,
+              top: '50%',
+              transform: 'translateY(-50%)',
+              background: 'transparent',
+              border: 'none',
+              fontSize: 16,
+              cursor: 'pointer'
+            }}
+            aria-label="Clear search"
+          >
+            ×
+          </button>
+        )}
         <div className="search-actions">
-          {loading ? <div style={{fontSize:13}}>Searching...</div> : null}
-          <button className="search-btn" onClick={() => { /* optional quick search action */ }}>Search</button>
+          {loading ? <div className='searching' style={{ fontSize: 13 }}>Searching...</div> : null}
+          <button className="search-btn" onClick={fetchResults}>Search</button>
         </div>
       </div>
-
-      {error && (
-        <div style={{
-          marginTop:8,
-          color:'#b00020',
-          background:'rgba(176,0,32,0.08)',
-          padding:8,
-          borderRadius:8,
-          fontSize:13
-        }}>
-          {error}
-        </div>
-      )}
 
       {normalized.length > 0 && (
         <div className="search-results" role="listbox" aria-label="Search results">
           {normalized.map(place => (
             <div key={place.id} className="result" role="option">
-              <div style={{flex:1}}>
-                <div style={{fontSize:14,fontWeight:600,color:'var(--text)'}}>{place.name}</div>
-                <div style={{fontSize:12,color:'var(--muted)'}}>{place.lat.toFixed(5)}, {place.lng.toFixed(5)}</div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 14, fontWeight: 400, color: 'var(--text)' }}>{place.name}</div>
               </div>
-              <div style={{display:'flex',gap:8}}>
-                <button className="button" onClick={() => onSetStart && onSetStart(place)}>Start</button>
-                <button className="button" onClick={() => onSetEnd && onSetEnd(place)}>End</button>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button className="button" onClick={() => { onSetStart && onSetStart(place); clearSearch(); }}>Start</button>
+                <button className="button" onClick={() => { onSetEnd && onSetEnd(place); clearSearch(); }}>End</button>
+                <button className="button" onClick={() => { onSetStop && onSetStop(place); clearSearch(); }}>Stop</button>
               </div>
             </div>
           ))}

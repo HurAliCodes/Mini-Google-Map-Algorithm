@@ -73,6 +73,9 @@ export default function Sidebar({
                       <div className="title" style={{fontSize:13}}>
                         {route.startName} → {route.endName}
                       </div>
+                      {route.stopLat != null && route.stopLng != null && (
+                        <div className="meta" style={{fontSize:12, color:'var(--muted)'}}>via {route.stopName || 'Stop'}</div>
+                      )}
                       <div className="meta" style={{display:'flex', gap:4, alignItems:'center'}}>
                         <IconClock />
                         {new Date(route.ts).toLocaleDateString()}
