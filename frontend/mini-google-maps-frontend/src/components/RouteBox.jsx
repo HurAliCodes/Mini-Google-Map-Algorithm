@@ -8,13 +8,13 @@ function formatDistance(meters) {
 
 export default function RouteBox({
   destination,
-  stop,
+  stops = [],
   awaitingStart,
   awaitingStop,
   onFindRoute,
   onUseCurrentLocation,
   onAddStop,
-  onClearStop,
+  onClearStops,
   onClear,
   onSaveRoute,
   routeFound,
@@ -39,6 +39,7 @@ export default function RouteBox({
             </div>
             <div style={{display:'flex',gap:8}}>
               <button className="button" onClick={onFitRoute}>Center route</button>
+              <button className="button" onClick={onAddStop}>Add Stop</button>
               <button className="button" onClick={onToggleNavigation}>Stop Navigation</button>
             </div>
           </div>
@@ -89,11 +90,7 @@ export default function RouteBox({
               <button className="button" onClick={onClear}>Clear</button>
             </div>
           </div>
-          {stop ? (
-            <div style={{fontSize:12,color:'var(--muted)',marginTop:4}}>
-              Via: {stop.name || `${stop.lat.toFixed(5)}, ${stop.lng.toFixed(5)}`}
-            </div>
-          ) : null}
+          
         </>
       ) : destination ? (
         <>
@@ -112,10 +109,9 @@ export default function RouteBox({
             </div>
 
             <div style={{display:'flex',gap:8}}>
-              {!stop ? (
-                <button className="button" onClick={onAddStop}>Add Stop</button>
-              ) : (
-                <button className="button" onClick={onClearStop}>Clear Stop</button>
+              <button className="button" onClick={onAddStop}>Add Stop</button>
+              {stops.length > 0 && (
+                <button className="button" onClick={onClearStops}>Clear Stops</button>
               )}
               {awaitingStart ? (
                 <button className="button" onClick={onUseCurrentLocation}>Use Current Location</button>

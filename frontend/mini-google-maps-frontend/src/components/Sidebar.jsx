@@ -38,11 +38,66 @@ export default function Sidebar({
   routeHistory = [],
   onLoadRoute,
   onClearRouteHistory,
+  stops = [],
+  onRemoveStop,
+  onClearStops,
   collapsed = false,
   onToggleCollapse,
 }) {
   return (
     <>
+      <div className="sidebar-header">
+        <span style={{fontWeight:600}}>Stops</span>
+        <button 
+          className="icon-btn collapse-toggle" 
+          onClick={onToggleCollapse}
+          aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+          title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+        >
+          <IconChevron collapsed={collapsed} />
+        </button>
+      </div>
+
+      {!collapsed && (
+        <div className="sidebar-content">
+          {stops.length === 0 ? (
+            <div style={{padding:'12px 8px', color:'var(--muted)', fontSize:13}}>No stops added</div>
+          ) : (
+            <>
+              {stops.map((st, idx) => (
+                <div key={`stop-${idx}`} className="item">
+                  <div style={{flex:1}}>
+                    <div className="title" style={{fontSize:13}}>
+                      {st.name || `${st.lat.toFixed(5)}, ${st.lng.toFixed(5)}`}
+                    </div>
+                    <div className="meta">{st.lat.toFixed(5)}, {st.lng.toFixed(5)}</div>
+                  </div>
+                  <div style={{display:'flex', gap:4}}>
+                    <button 
+                      className="icon-btn small-btn" 
+                      onClick={() => onRemoveStop && onRemoveStop(idx)}
+                      title="Remove stop"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                </div>
+              ))}
+
+              <div style={{padding:'12px 8px', borderTop:'1px solid var(--border)'}}>
+                <button 
+                  className="button" 
+                  onClick={() => onClearStops && onClearStops()}
+                  style={{width:'100%', fontSize:13}}
+                >
+                  Clear Stops
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
       <div className="sidebar-header">
         <span style={{fontWeight:600}}>Route History</span>
         <button 

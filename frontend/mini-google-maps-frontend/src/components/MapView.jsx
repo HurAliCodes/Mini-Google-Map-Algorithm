@@ -18,6 +18,15 @@ const destinationIcon = new L.Icon({
   shadowSize: [41, 41],
 });
 
+const stopIcon = new L.Icon({
+  iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-green.png',
+  shadowUrl: 'https://unpkg.com/leaflet@1.9.3/dist/images/marker-shadow.png',
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+  popupAnchor: [1, -34],
+  shadowSize: [41, 41],
+});
+
 fixDefaultIcon();
 
 function ClickHandler({ onMapClick }) {
@@ -47,7 +56,7 @@ function haversineMeters(a, b) {
 export default function MapView({ theme, onToggleTheme }) {
   const [points, setPoints] = useState([]);
   const [destination, setDestination] = useState(null);
-  const [stop, setStop] = useState(null);
+  const [stops, setStops] = useState([]);
   const [path, setPath] = useState([]);
   const [routeHistory, setRouteHistory] = useState([]);
   const [awaitingStart, setAwaitingStart] = useState(false);
@@ -67,11 +76,15 @@ export default function MapView({ theme, onToggleTheme }) {
   const DEVIATE_THRESHOLD_M = 50;
 
   const handleMapClick = (latlng) => {
-    if (navActive || isFetching || path.length > 0) return;
+    if (isFetching) return;
+    if (navActive && !awaitingStop) return;
     const place = { lat: latlng.lat, lng: latlng.lng, name: 'Dropped Pin' };
     if (awaitingStop) {
-      setStop(place);
+      setStops((prev) => [...prev, place]);
       setAwaitingStop(false);
+      if (navActive && destination && points[0]) {
+        try { fetchPathFrom(points[0], destination); } catch (e) {}
+      }
       return;
     }
     if (awaitingStart) {
@@ -80,6 +93,8 @@ export default function MapView({ theme, onToggleTheme }) {
       setEnd(place);
     }
   };
+
+  
 
   // Load saved route history once
   useEffect(() => {
@@ -224,17 +239,20 @@ export default function MapView({ theme, onToggleTheme }) {
   };
 
   const setIntermediateStop = (place) => {
-    if (isFetching || path.length > 0) return; // lock while route is calculating or exists
+    if (isFetching) return;
     const s = { lat: place.lat, lng: place.lng, name: place.name };
-    setStop(s);
+    setStops((prev) => [...prev, s]);
     setAwaitingStop(false);
     centerMapOn(s);
+    if (navActive && destination && points[0]) {
+      try { fetchPathFrom(points[0], destination); } catch (e) {}
+    }
   };
 
   const clearAll = () => {
     setPoints([]);
     setDestination(null);
-    setStop(null);
+    setStops([]);
     setPath([]);
     setIsFetching(false);
     setDistanceMeters(0);
@@ -261,6 +279,20 @@ export default function MapView({ theme, onToggleTheme }) {
       return;
     }
     setAwaitingStop(true);
+  };
+
+  const removeStop = (index) => {
+    setStops((prev) => prev.filter((_, i) => i !== index));
+    if (navActive && destination && points[0]) {
+      try { fetchPathFrom(points[0], destination); } catch (e) {}
+    }
+  };
+
+  const clearStops = () => {
+    setStops([]);
+    if (navActive && destination && points[0]) {
+      try { fetchPathFrom(points[0], destination); } catch (e) {}
+    }
   };
 
   const startNavigation = () => {
@@ -401,27 +433,26 @@ export default function MapView({ theme, onToggleTheme }) {
   const fetchPathFrom = async (start, end) => {
     if (!start || !end) return;
     setIsFetching(true);
-    if (stop) {
-      const seg1 = await fetchSegment(start, stop);
-      const seg2 = await fetchSegment(stop, end);
-      const merged = [...(seg1.path || []), ...((seg2.path || []).slice(1))];
-      setPath(merged);
-      let total = 0;
-      if (seg1.distance && seg2.distance) {
-        total = seg1.distance + seg2.distance;
-      } else {
-        for (let i = 1; i < merged.length; i++) total += haversineMeters(merged[i - 1], merged[i]);
-      }
-      setDistanceMeters(total);
-      setIsFetching(false);
-      return;
-    }
-
-    const seg = await fetchSegment(start, end);
-    setPath(seg.path);
+    const waypoints = [start, ...stops, end];
+    let merged = [];
     let total = 0;
-    if (seg.distance) total = seg.distance; else {
-      for (let i = 1; i < seg.path.length; i++) total += haversineMeters(seg.path[i - 1], seg.path[i]);
+    let distancesKnown = true;
+    for (let i = 0; i < waypoints.length - 1; i++) {
+      const a = waypoints[i];
+      const b = waypoints[i + 1];
+      const seg = await fetchSegment(a, b);
+      const segPath = seg.path || [];
+      if (i === 0) merged = [...segPath]; else merged = [...merged, ...segPath.slice(1)];
+      if (seg.distance != null) {
+        total += seg.distance;
+      } else {
+        distancesKnown = false;
+      }
+    }
+    setPath(merged);
+    if (!distancesKnown) {
+      total = 0;
+      for (let i = 1; i < merged.length; i++) total += haversineMeters(merged[i - 1], merged[i]);
     }
     setDistanceMeters(total);
     setIsFetching(false);
@@ -432,13 +463,14 @@ export default function MapView({ theme, onToggleTheme }) {
       return alert('No route to save.');
     const start = points[0];
     const end = destination;
+    const mid = stops && stops.length ? stops[0] : null;
     const route = {
       startName: start.name || 'Start',
       startLat: start.lat,
       startLng: start.lng,
-      stopName: stop ? (stop.name || 'Stop') : null,
-      stopLat: stop ? stop.lat : null,
-      stopLng: stop ? stop.lng : null,
+      stopName: mid ? (mid.name || 'Stop') : null,
+      stopLat: mid ? mid.lat : null,
+      stopLng: mid ? mid.lng : null,
       endName: end.name || 'Destination',
       endLat: end.lat,
       endLng: end.lng,
@@ -456,7 +488,7 @@ export default function MapView({ theme, onToggleTheme }) {
     const e = { lat: r.endLat, lng: r.endLng, name: r.endName };
     setPoints([s, e]);
     setDestination(e);
-    setStop(mid);
+    setStops(mid ? [mid] : []);
     setPath(r.path || []);
     setDistanceMeters(r.distance_meters || 0);
 
@@ -494,6 +526,9 @@ export default function MapView({ theme, onToggleTheme }) {
             routeHistory={routeHistory}
             onLoadRoute={loadRouteFromHistory}
             onClearRouteHistory={clearRouteHistory}
+            stops={stops}
+            onRemoveStop={removeStop}
+            onClearStops={clearStops}
             collapsed={sidebarCollapsed}
             onToggleCollapse={() => setSidebarCollapsed((p) => !p)}
           />
@@ -519,7 +554,9 @@ export default function MapView({ theme, onToggleTheme }) {
                 <CircleMarker center={[points[0].lat, points[0].lng]} radius={18} pathOptions={{ color: '#1a73e8', fillColor: '#1a73e8', fillOpacity: 0.15 }} />
               </>
             )}
-            {stop && <Marker position={[stop.lat, stop.lng]} />}
+            {stops.map((st, i) => (
+              <Marker key={`stop-${i}`} position={[st.lat, st.lng]} icon={stopIcon} />
+            ))}
             {destination && <Marker position={[destination.lat, destination.lng]} icon={destinationIcon} />}
               {path.length > 0 && (
                 <Polyline
@@ -556,19 +593,19 @@ export default function MapView({ theme, onToggleTheme }) {
 
           <RouteBox
             destination={destination}
-            stop={stop}
+            stops={stops}
             awaitingStart={awaitingStart}
             awaitingStop={awaitingStop}
             onFindRoute={beginRoutePlanning}
             onUseCurrentLocation={useCurrentLocation}
             onAddStop={beginAddStop}
-            onClearStop={() => setStop(null)}
+            onClearStops={clearStops}
             onClear={clearAll}
             onSaveRoute={saveCurrentRoute}
             routeFound={path.length > 0}
             distanceMeters={distanceMeters}
             estimates={estimates}
-            onFitRoute={handleFitRoute} // RouteBox center uses MapActions now
+            onFitRoute={handleFitRoute}
             pathPointsCount={path.length}
             navActive={navActive}
             onToggleNavigation={toggleNavigation}

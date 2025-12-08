@@ -528,3 +528,9 @@ button{
   content: "\f554", " Walking";
   font-family: "Font Awesome 6 Free", sans-serif;
 }
+
+*{scrollbar-width:thin;scrollbar-color:var(--border) var(--card-bg)}
+::-webkit-scrollbar{width:10px;height:10px}
+::-webkit-scrollbar-track{background:var(--card-bg);border-radius:10px}
+::-webkit-scrollbar-thumb{background-color:var(--border);border-radius:10px;border:2px solid transparent;background-clip:padding-box}
+::-webkit-scrollbar-thumb:hover{background-color:var(--primary)}
