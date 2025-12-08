@@ -16,8 +16,8 @@ class Algorithms{
         static void printPath(Graph& g,unordered_map<long long, long long> &parent, long long start, long long end);
  
         //Algorithms
-        static vector<long long> Dijkstra(Graph & g , long long start, long long end);
-        static void Astar(Graph & g , long long start, long long end);
+        static double Dijkstra(Graph & g , long long start, long long end);
+        static double Astar(Graph & g , long long start, long long end);
 
         //Efficiency
         static void efficiency(Graph & g, long long start, long long end);

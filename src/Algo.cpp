@@ -22,7 +22,7 @@ void Algorithms::printPath(Graph& g,unordered_map<long long, long long> &parent,
     }
 
     reverse(path.begin(), path.end());
-    ofstream ot("practice/path_cordinates.csv");
+    ofstream ot("path_cordinates.csv");
     ot<< "lat,lon\n";
 
      for (auto node : path) {
@@ -42,67 +42,59 @@ void Algorithms::printPath(Graph& g,unordered_map<long long, long long> &parent,
 }
 
 //---------------A Star-----------------------------------------------
-void Algorithms::Astar(Graph & g , long long start, long long end){
+double Algorithms::Astar(Graph & g , long long startID, long long destID) {
 
-    //Astart Formula : f(n) = g(n) + h(n)
-    //Here, f(n) = Final/Total cost
-    //      g(n) = actual cost (path cost)
-    //      h(n) = heuristic cost
-
-    //Get adjency list
     auto &adj = g.get_adjList();
-    //Get nodes
+    auto &idToIndex = g.idToIndex;
+    auto &indexToId = g.indexToId;
     auto &nodes = g.get_nodes();
 
-    unordered_map<long long, double> gScore, fScore;
-    unordered_map<long long, long long> parent;
-
-    //Set all to infinity
-    for(auto &p: adj){
-        gScore[p.first] = numeric_limits<double>::infinity();
-        fScore[p.first] = numeric_limits<double>::infinity();
-        parent[p.first] = -1;
+    if (idToIndex.find(startID) == idToIndex.end() ||
+        idToIndex.find(destID) == idToIndex.end()) 
+    {
+        return std::numeric_limits<double>::infinity();
     }
 
-    //Set starting node's cost to 0
-    gScore[start] = 0;
-    fScore[start] = heuristic(g, start, end);
+    int start = idToIndex[startID];
+    int dest = idToIndex[destID];
+    int N = indexToId.size();
 
-    priority_queue<pair<double, long long>, vector<pair<double, long long>>, greater<pair<double, long long>>> pq;
-    pq.push({fScore[start], start});
+    vector<double> gCost(N, numeric_limits<double>::infinity());
+    vector<double> fCost(N, numeric_limits<double>::infinity());
+    vector<int> parent(N, -1);
+
+    gCost[start] = 0;
+
+    using P = pair<double, int>;
+    priority_queue<P, vector<P>, greater<P>> pq;
+
+    fCost[start] = heuristic(g, startID, destID);
+    pq.push({fCost[start], start});
 
     auto startTime = chrono::high_resolution_clock::now();
-    
-    while(!pq.empty()){
-        //Return if Dijkstra found the result
-        // if(found) return;
 
-        long long node = pq.top().second;
+    while (!pq.empty()) {
+        auto [f, u] = pq.top();
         pq.pop();
 
-        if(node == end){
-            // found = true;
-            // auto endTime = chrono::high_resolution_clock::now();
-            // chrono::duration<double, milli> duration = endTime - startTime;
-            // cout << "\n--- A* Search Algorithm ---\n";
-            // printPath(g, parent, start, end);
-            // cout << "Total Distance: " << gScore[end] << " meters\n";
-            // cout << "Execution Time: " << duration.count() << " ms\n";
+        if (u == dest)
             break;
-        }
 
-        for(auto &neighbour : adj[node]){
-            long long next = neighbour.first;
-            double weight = neighbour.second;
-            
-            //Temporary path cost
-            double tentative_g = gScore[node] + weight;
-            
-            if(tentative_g < gScore[next]){
-                parent[next] = node;
-                gScore[next] = tentative_g;
-                fScore[next] = tentative_g + heuristic(g, next, end);
-                pq.push({fScore[next], next});
+        long long uID = indexToId[u];
+
+        for (auto &nbr : adj.at(uID)) {
+            long long vID = nbr.first;
+            double weight = nbr.second;
+
+            int v = idToIndex[vID];
+            double tentative_g = gCost[u] + weight;
+
+            if (tentative_g < gCost[v]) {
+                gCost[v] = tentative_g;
+                fCost[v] = tentative_g + heuristic(g, vID, destID);
+                parent[v] = u;
+
+                pq.push({fCost[v], v});
             }
         }
     }
@@ -110,60 +102,73 @@ void Algorithms::Astar(Graph & g , long long start, long long end){
     auto endTime = chrono::high_resolution_clock::now();
     chrono::duration<double, milli> duration = endTime - startTime;
 
-    cout << "\n--- A* Search Algorithm ---\n";
-    printPath(g, parent, start, end);
-    cout << "Total Distance: " << gScore[end] << " meters\n";
-    cout << "Execution Time: " << duration.count() << " ms\n";
-}
+    cout << "\n--- A* Algorithm (Optimized) ---\n";
 
-//---------------Dijkstra---------------------------------------------
-vector<long long> Algorithms::Dijkstra(Graph & g, long long start, long long destination){
-    auto &adj = g.get_adjList();
-
-    unordered_map<long long, double> dist;
-    unordered_map<long long, long long> parent;
-
-    //Setting distances to infinity
-    for(auto &p : adj){
-        dist[p.first] = numeric_limits<double>::infinity();
-        parent[p.first] = -1;
+    if (gCost[dest] == numeric_limits<double>::infinity()) {
+        cout << "❌ No path found\n";
+        return numeric_limits<double>::infinity();   // ✔ FIX
     }
 
-    //Current Node distance to 0
+    // Convert parent[] indices → raw IDs
+    unordered_map<long long, long long> rawParent;
+    for (int i = 0; i < N; i++) {
+        if (parent[i] == -1) rawParent[indexToId[i]] = -1;
+        else rawParent[indexToId[i]] = indexToId[parent[i]];
+    }
+
+    printPath(g, rawParent, startID, destID);
+
+    cout << "Total Distance: " << gCost[dest] << " meters\n";
+    cout << "Execution Time: " << duration.count() << " ms\n";
+
+    return gCost[dest];   // ✔ REQUIRED
+}
+
+
+//---------------Dijkstra---------------------------------------------
+double Algorithms::Dijkstra(Graph &g, long long startId, long long destId) {
+    auto &adj = g.get_adjList();
+    auto &idToIndex = g.idToIndex;
+    auto &indexToId = g.indexToId;
+
+    // Convert raw IDs → compact indices
+    int start = idToIndex[startId];
+    int dest  = idToIndex[destId];
+
+    int N = indexToId.size();
+
+    // Fixed memory – vectors instead of huge unordered_maps
+    vector<double> dist(N, numeric_limits<double>::infinity());
+    vector<int> parent(N, -1);
+
     dist[start] = 0;
 
-    priority_queue<pair<double, long long>, vector<pair<double, long long>>, greater<pair<double, long long>>> pq;
-    pq.push({0, start});
+    using P = pair<double, int>;
+    priority_queue<P, vector<P>, greater<P>> pq;
+    pq.push({0.0, start});
 
     auto startTime = chrono::high_resolution_clock::now();
 
-    while(!pq.empty()){
-        //Return - A-Star found the result
-        // if(found) return;
-
-        auto [currentDist, node] = pq.top();
+    while (!pq.empty()) {
+        auto [currentDist, u] = pq.top();
         pq.pop();
 
-        if(node == destination){
-            // found = true;
-            // auto endTime = chrono::high_resolution_clock::now();
-            // chrono::duration<double, milli> duration = endTime - startTime;
-
-            // cout << "\n--- Dijkstra Algorithm ---\n";
-            // printPath(g,parent, start, destination);
-            // cout << "Total Distance: " << dist[destination] << " meters\n";
-            // cout << "Execution Time: " << duration.count() << " ms\n";
+        if (u == dest)
             break;
-        }
 
-        for(auto &neighbour : adj[node]){
-            long long next = neighbour.first;
-            double weight = neighbour.second;
+        long long uId = indexToId[u];
 
-            if(currentDist + weight < dist[next]){
-                dist[next] = currentDist + weight;
-                parent[next] = node;
-                pq.push({dist[next], next});
+        // Relax all neighbors
+        for (auto &nbr : adj.at(uId)) {
+            long long vId = nbr.first;
+            double weight = nbr.second;
+
+            int v = idToIndex[vId];
+
+            if (currentDist + weight < dist[v]) {
+                dist[v] = currentDist + weight;
+                parent[v] = u;
+                pq.push({dist[v], v});
             }
         }
     }
@@ -181,14 +186,25 @@ vector<long long> Algorithms::Dijkstra(Graph & g, long long start, long long des
     auto endTime = chrono::high_resolution_clock::now();
     chrono::duration<double, milli> duration = endTime - startTime;
 
-    cout << "\n--- Dijkstra Algorithm ---\n";
-    printPath(g,parent, start, destination);
-    cout << "Total Distance: " << dist[destination] << " meters\n";
+    cout << "\n--- Dijkstra Algorithm (Optimized) ---\n";
+
+    // Convert parent[] indices → raw IDs
+    unordered_map<long long, long long> rawParent;
+    for (int i = 0; i < N; i++) {
+        if (parent[i] == -1) rawParent[indexToId[i]] = -1;
+        else rawParent[indexToId[i]] = indexToId[parent[i]];
+    }
+
+    // Print path using raw IDs
+    printPath(g, rawParent, startId, destId);
+
+    cout << "Total Distance: " << dist[dest] << " meters\n";
     cout << "Execution Time: " << duration.count() << " ms\n";
 
-    return path;
-
+    return dist[dest];
 }
+
+
 
 void Algorithms::efficiency(Graph & g, long long start, long long end){
     // Dijkstra(g, start, end);

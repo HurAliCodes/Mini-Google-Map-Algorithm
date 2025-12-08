@@ -35,10 +35,12 @@ void Graph::adEdge(long long from, long long to){
     adjList[to].push_back({from, distance});
 }
 
+const unordered_map<long long, vector<pair<long long, double>>>& Graph::get_adjList() const{
+    return adjList;
+}
 unordered_map<long long, vector<pair<long long, double>>>& Graph::get_adjList(){
     return adjList;
 }
-
 unordered_map<long long, Node>& Graph::get_nodes(){
     return nodes;
 }
@@ -52,3 +54,30 @@ void Graph::printGraph(){
         cout<<endl;
     }
 }
+
+void Graph::buildNodeIndexMapping() {
+    idToIndex.clear();
+    indexToId.clear();
+
+    int index = 0;
+    for (auto &p : adjList) {
+        idToIndex[p.first] = index;
+        indexToId.push_back(p.first);
+        index++;
+    }
+}
+const vector<pair<long long, double>>& Graph::getNeighbors(long long id) const {
+    static const vector<pair<long long, double>> empty;
+    auto it = adjList.find(id);
+    if(it != adjList.end()) return it->second;
+    return empty;
+}
+
+bool Graph::hasNode(long long id) const {
+    return nodes.find(id) != nodes.end();
+}
+
+const unordered_map<long long, Node>& Graph::get_nodes() const {
+    return nodes;
+}
+
