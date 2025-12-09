@@ -1,8 +1,8 @@
-// main.cpp — optimized nearest lookup using KD-tree, preserves A* behaviour & CSV path read
+
 #include "crow.h"
 #include "Graph.h"
 #include "Algo.h"
-#include "kdtree.h"   // <- KD-tree header you integrated (kNearest(lat, lon, k, valid))
+#include "kdtree.h"  
 #include <fstream>
 #include <sstream>
 #include <iostream>
@@ -40,13 +40,13 @@ struct CORS
     }
 };
 
-// Load node coordinates (unchanged)
+// Load node coordinates 
 void loadNodeCoordinates(Graph &g, const std::string &filename)
 {
     std::ifstream in(filename);
     if (!in.is_open())
     {
-        std::cerr << "❌ Failed to open " << filename << std::endl;
+        std::cerr << " Failed to open " << filename << std::endl;
         return;
     }
 
@@ -71,14 +71,14 @@ void loadNodeCoordinates(Graph &g, const std::string &filename)
         catch (...) { continue; }
     }
 
-    std::cout << "✅ Node coordinates loaded from " << filename << std::endl;
+    std::cout << " Node coordinates loaded from " << filename << std::endl;
 }
 
-// Load graph edges (unchanged)
+// Load graph edges 
 Graph loadGraph(const std::string& filename, Graph& g) {
     std::ifstream in(filename);
     if (!in.is_open()) {
-        std::cerr << "❌ Failed to open " << filename << std::endl;
+        std::cerr << " Failed to open " << filename << std::endl;
         return g;
     }
 
@@ -106,7 +106,7 @@ Graph loadGraph(const std::string& filename, Graph& g) {
         }
     }
 
-    std::cout << "✅ Graph edges loaded from " << filename << std::endl;
+    std::cout << " Graph edges loaded from " << filename << std::endl;
     return g;
 }
 
@@ -119,11 +119,11 @@ int main()
     loadGraph("nodes.txt", g);
 
     g.buildNodeIndexMapping();
-    std::cout << "✅ Node index mapping built. Total indexed nodes: " << g.indexToId.size() << std::endl;
+    std::cout << " Node index mapping built. Total indexed nodes: " << g.indexToId.size() << std::endl;
 
     Algorithms algo;
 
-    // Build KD-tree from graph nodes (only once at startup)
+    // Build KD-tree from graph nodes 
     std::vector<KDPoint> kdpoints;
     kdpoints.reserve(g.get_nodes().size());
     for (const auto &p : g.get_nodes()) {
@@ -137,10 +137,10 @@ int main()
     }
 
     KDTree kdt;
-    kdt.build(kdpoints); // expects KD-tree variant that projects lat/lon internally
+    kdt.build(kdpoints); 
 
     // Health check
-    CROW_ROUTE(app, "/")([]() { return "✅ Server is running!"; });
+    CROW_ROUTE(app, "/")([]() { return " Server is running!"; });
 
     // Shortest path route
     CROW_ROUTE(app, "/shortest-path").methods("POST"_method)([&](const crow::request &req)
@@ -197,7 +197,7 @@ int main()
                         // small sanity check: still run A* to ensure it's valid
                     }
 
-                    // call A* (unchanged)
+                    // call A* 
                     double dist = algo.Astar(g, sId, eId);
 
                     if (dist != std::numeric_limits<double>::infinity()) {
@@ -276,11 +276,11 @@ int main()
             return res;
 
         } catch (const std::exception& e) {
-            std::cerr << "❌ Error: " << e.what() << std::endl;
+            std::cerr << "Error: " << e.what() << std::endl;
             return crow::response(500, "Internal server error");
         }
     });
 
-    std::cout << "🚀 Crow server started on port 5000\n";
+    std::cout << "Crow server started on port 5000\n";
     app.port(5000).multithreaded().run();
 }

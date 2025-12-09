@@ -33,7 +33,7 @@ void Algorithms::printPath(Graph& g,unordered_map<long long, long long> &parent,
     cout << endl;
 
     ot.close();
-    cout << "✅ Path coordinates saved to path_coords.csv\n";
+    cout << "Path coordinates saved to path_coords.csv\n";
 
     cout<<"Shortest path: ";
     for(auto node : path)
@@ -105,7 +105,7 @@ double Algorithms::Astar(Graph & g , long long startID, long long destID) {
     cout << "\n--- A* Algorithm (Optimized) ---\n";
 
     if (gCost[dest] == numeric_limits<double>::infinity()) {
-        cout << "❌ No path found\n";
+        cout << "No path found\n";
         return numeric_limits<double>::infinity();   // ✔ FIX
     }
 
@@ -173,16 +173,6 @@ double Algorithms::Dijkstra(Graph &g, long long startId, long long destId) {
         }
     }
 
-    vector<long long> path;
-    for (long long at = destination; at != -1; at= parent[at])
-    {
-        /* code */
-        path.push_back(at);
-        if(at== start) break;
-    }
-    
-    reverse(path.begin(), path.end());
-
     auto endTime = chrono::high_resolution_clock::now();
     chrono::duration<double, milli> duration = endTime - startTime;
 
@@ -207,6 +197,6 @@ double Algorithms::Dijkstra(Graph &g, long long startId, long long destId) {
 
 
 void Algorithms::efficiency(Graph & g, long long start, long long end){
-    // Dijkstra(g, start, end);
-    // Astar(g, start, end);
+    Dijkstra(g, start, end);
+    Astar(g, start, end);
 }
