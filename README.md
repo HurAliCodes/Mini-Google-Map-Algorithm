@@ -1,15 +1,59 @@
-Download Pugixml headers Zipped file
-https://drive.google.com/file/d/1-Bi5p-1cugX-sQzv-trhg1gRrftMdizA/view?usp=sharing
-g++ -Iinclude src/*.cpp Main.cpp -o main.exe
+# 🗺️ Mini Map – Karachi Navigation System
 
-### command to run server
-g++ -std=c++17 main.cpp src/*.cpp -Iinclude -lpthread -lws2_32 -lmswsock -o server.exe
+Mini Map is a lightweight navigation system inspired by Google Maps, built for **Karachi** using **OpenStreetMap data**.  
+The project demonstrates real-world usage of **Data Structures and Algorithms** such as **Graphs, Dijkstra’s Algorithm, and A\***.
 
+---
 
-g++ -std=c++17 -Iinclude main.cpp -o server -pthread -lws2_32 -lmswsock
+## 🚀 Features
 
-.Gitignore (add this)
-# Ignore large map and archive files
-Karachi OSM/
-*.osm
-*.rar
+- Shortest path computation between locations
+- Dijkstra’s Algorithm (guaranteed shortest path)
+- A* Search Algorithm (heuristic-based faster routing)
+- Add intermediate stops (multi-stop routing)
+- Automatic rerouting on deviation
+- Interactive map using Leaflet
+- Marker display for source, destination, and stops
+- Export route coordinates to CSV
+- Optimized backend for large graphs
+
+---
+
+## 🧠 Data Structures Used
+
+| Data Structure | Usage |
+|----------------|-------|
+| Graph (Adjacency List) | Represents Karachi road network |
+| Priority Queue (Min-Heap) | Used in Dijkstra and A* |
+| Hash Maps | Node ID to index mapping |
+| Vectors (Dynamic Arrays) | Distance, parent, and path storage |
+| KD-Tree | Nearest node search from coordinates |
+
+---
+
+## 🧮 Algorithms Implemented
+
+- **Dijkstra’s Algorithm**  
+  - Time Complexity: `O(E log V)`
+- **A* Search Algorithm**  
+  - Time Complexity: `O(E log V)` (faster in practice using heuristic)
+
+---
+
+## 🛠️ Tech Stack
+
+**Backend**
+- C++
+- STL
+- PugiXML
+- OpenStreetMap (OSM)
+
+**Frontend**
+- React JS
+- Leaflet
+- Axios
+
+---
+
+## 📂 Project Structure
+
