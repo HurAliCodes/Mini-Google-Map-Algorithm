@@ -55,5 +55,22 @@ The project demonstrates real-world usage of **Data Structures and Algorithms** 
 
 ---
 
-## 📂 Project Structure
+## 👨‍👩‍👦 Developers
+
+- Abdul Ahad Memon
+- Syed Aayan Mahmood
+- Syed Hur Ali Rizvi
+- Syed Muhammad Taha
+
+---
+
+## 📌 Conclusion
+
+Mini Map is an educational and transparent routing system that applies core **Data Structure concepts** to solve real-world navigation problems efficiently.
+
+---
+
+## 📄 License
+
+This project is developed for **academic and educational purposes only**.
 
