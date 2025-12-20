@@ -5,24 +5,52 @@ The project demonstrates real-world usage of **Data Structures and Algorithms** 
 
 ---
 
+## ▶️ Getting Started – How to Run the Application
+
+Follow these steps to run the project locally:
+
+### 🔹 1. Start the Backend Server
+1. Navigate to the Mini-Google-Map-Algorithm directory.
+2. Double-click on **`server.exe`** to start the backend server.
+3. Keep this window running.
+
+### 🔹 2. Run the Frontend
+1. Open a terminal and go to the frontend folder:
+   cd frontend/mini-google-maps-frontend
+
+2. Install dependencies:
+   npm install
+
+3. Start the development server:
+   npm run dev
+
+### 🔹 3. Open in Browser
+Once the frontend starts, open your browser and go to:
+http://localhost:5173
+(or the port shown in your terminal)
+
+Your Mini Map application should now be running locally 🚀
+
+---
+
 ## 🚀 Features
 
-- Shortest path computation between locations
-- Dijkstra’s Algorithm (guaranteed shortest path)
-- A* Search Algorithm (heuristic-based faster routing)
-- Add intermediate stops (multi-stop routing)
-- Automatic rerouting on deviation
-- Interactive map using Leaflet
-- Marker display for source, destination, and stops
-- Export route coordinates to CSV
-- Optimized backend for large graphs
+- Shortest path computation between locations  
+- Dijkstra’s Algorithm (guaranteed shortest path)  
+- A* Search Algorithm (heuristic-based faster routing)  
+- Add intermediate stops (multi-stop routing)  
+- Automatic rerouting on deviation  
+- Interactive map using Leaflet  
+- Marker display for source, destination, and stops  
+- Export route coordinates to CSV  
+- Optimized backend for large graphs  
 
 ---
 
 ## 🧠 Data Structures Used
 
 | Data Structure | Usage |
-|----------------|-------|
+|----------------|--------|
 | Graph (Adjacency List) | Represents Karachi road network |
 | Priority Queue (Min-Heap) | Used in Dijkstra and A* |
 | Hash Maps | Node ID to index mapping |
@@ -34,21 +62,22 @@ The project demonstrates real-world usage of **Data Structures and Algorithms** 
 ## 🧮 Algorithms Implemented
 
 - **Dijkstra’s Algorithm**  
-  - Time Complexity: `O(E log V)`
+  Time Complexity: O(E log V)
+
 - **A* Search Algorithm**  
-  - Time Complexity: `O(E log V)` (faster in practice using heuristic)
+  Time Complexity: O(E log V) (faster in practice using heuristic)
 
 ---
 
 ## 🛠️ Tech Stack
 
-**Backend**
+Backend
 - C++
 - STL
 - PugiXML
 - OpenStreetMap (OSM)
 
-**Frontend**
+Frontend
 - React JS
 - Leaflet
 - Axios
@@ -57,20 +86,19 @@ The project demonstrates real-world usage of **Data Structures and Algorithms** 
 
 ## 👨‍👩‍👦 Developers
 
-- Abdul Ahad Memon
-- Syed Aayan Mahmood
-- Syed Hur Ali Rizvi
-- Syed Muhammad Taha
+- Abdul Ahad Memon  
+- Syed Aayan Mahmood  
+- Syed Hur Ali Rizvi  
+- Syed Muhammad Taha  
 
 ---
 
 ## 📌 Conclusion
 
-Mini Map is an educational and transparent routing system that applies core **Data Structure concepts** to solve real-world navigation problems efficiently.
+Mini Map is an educational and transparent routing system that applies core Data Structure concepts to solve real-world navigation problems efficiently.
 
 ---
 
 ## 📄 License
 
-This project is developed for **academic and educational purposes only**.
-
+This project is developed for academic and educational purposes only.
