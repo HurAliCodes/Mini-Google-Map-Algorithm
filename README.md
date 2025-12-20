@@ -16,14 +16,17 @@ Follow these steps to run the project locally:
 
 ### 🔹 2. Run the Frontend
 1. Open a terminal and go to the frontend folder:
+```
    cd frontend/mini-google-maps-frontend
-
-2. Install dependencies:
+```
+3. Install dependencies:
+```
    npm install
-
-3. Start the development server:
+```
+4. Start the development server:
+```
    npm run dev
-
+```
 ### 🔹 3. Open in Browser
 Once the frontend starts, open your browser and go to:
 http://localhost:5173
@@ -31,6 +34,11 @@ http://localhost:5173
 
 Your Mini Map application should now be running locally 🚀
 
+### Rebuilding (optional)
+if you want to make changes in backend and rebuil the server file then run this command in the terminal in your Mini-Google-Map-Algorithm directory.
+```
+g++ -std=c++17 main.cpp src/*.cpp -Iinclude -lpthread -lws2_32 -lmswsock -o server.exe
+```
 ---
 
 ## 🚀 Features
