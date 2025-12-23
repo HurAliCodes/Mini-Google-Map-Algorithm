@@ -109,4 +109,6 @@ Mini Map is an educational and transparent routing system that applies core Data
 
 ## 📄 License
 
-This project is developed for academic and educational purposes only.
+This project is licensed under the MIT License. See the `LICENSE` file for more details.
+
+---
