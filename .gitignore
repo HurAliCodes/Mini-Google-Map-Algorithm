@@ -15,3 +15,5 @@ build/
 Karachi OSM/
 *.osm
 *.rar
+config.bat
+node_modules
