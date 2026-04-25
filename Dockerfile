@@ -1,0 +1,14 @@
+FROM ubuntu:22.04
+ENV DEBIAN_FRONTEND=noninteractive
+RUN apt-get update && apt-get install -y build-essential cmake libboost-all-dev libssl-dev zlib1g-dev && rm -rf /var/lib/apt/lists/*
+WORKDIR /app
+COPY include/ ./include/
+COPY src/ ./src/
+COPY Main.cpp ./
+COPY CMakeLists.txt ./
+COPY nodes.csv ./
+COPY nodes.txt ./
+COPY path_cordinates.csv ./
+RUN cmake -B build -DCMAKE_BUILD_TYPE=Release && cmake --build build --config Release
+EXPOSE 5000
+CMD ["./build/minimap_server"]
