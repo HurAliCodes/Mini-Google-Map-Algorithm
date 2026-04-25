@@ -17,3 +17,4 @@ Karachi OSM/
 *.rar
 config.bat
 node_modules
+.env
