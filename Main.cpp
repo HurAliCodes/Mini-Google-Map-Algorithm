@@ -282,5 +282,6 @@ int main()
     });
 
     std::cout << "Crow server started on port 5000\n";
-    app.port(5000).multithreaded().run();
+    int port = std::stoi(std::getenv("PORT") ? std::getenv("PORT") : "5000");
+    app.port(port).multithreaded().run();    
 }
