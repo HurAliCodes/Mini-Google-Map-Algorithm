@@ -399,7 +399,8 @@ export default function MapView({ theme, onToggleTheme }) {
 
   const fetchSegment = async (a, b) => {
     try {
-      const apiUrl = import.meta.env.VITE_API_URL;
+      // const apiUrl = import.meta.env.VITE_API_URL;
+      const apiUrl = 'https://mini-google-map-algorithm.onrender.com';
       const res = await axios.post(`${apiUrl}/shortest-path`, { start: a, end: b });
       if (!res.data?.path || !Array.isArray(res.data.path)) throw new Error('Invalid path response');
       return { path: res.data.path, distance: res.data.distance_meters };
