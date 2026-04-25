@@ -399,7 +399,7 @@ export default function MapView({ theme, onToggleTheme }) {
 
   const fetchSegment = async (a, b) => {
     try {
-      const res = await axios.post('http://127.0.0.1:5000/shortest-path', { start: a, end: b });
+      const res = await axios.post('https://mini-google-map-algorithm.onrender.com/shortest-path', { start: a, end: b });
       if (!res.data?.path || !Array.isArray(res.data.path)) throw new Error('Invalid path response');
       return { path: res.data.path, distance: res.data.distance_meters };
     } catch (err) {
