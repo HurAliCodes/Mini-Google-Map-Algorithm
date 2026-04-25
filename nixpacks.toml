@@ -1,0 +1,11 @@
+[phases.setup]
+aptPkgs = ["cmake", "g++", "libboost-all-dev", "libssl-dev", "zlib1g-dev"]
+
+[phases.build]
+cmds = [
+  "cmake -B build -DCMAKE_BUILD_TYPE=Release",
+  "cmake --build build"
+]
+
+[start]
+cmd = "./build/minimap_server"
